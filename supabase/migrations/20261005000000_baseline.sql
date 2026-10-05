@@ -918,4 +918,4 @@ alter publication supabase_realtime add table
   public.spaces, public.space_participants, public.messages, public.decisions, public.votes,
   public.tasks, public.task_skill_tags, public.member_skills, public.space_reads,
   public.notifications, public.documents, public.meetings, public.task_assignees, public.space_topics, public.document_links,
-  public.library_items, public.library_item_groups;
+  public.library_items, public.library_item_groups, public.skill_areas;

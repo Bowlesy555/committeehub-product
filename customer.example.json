@@ -1,0 +1,20 @@
+{
+  "orgName": "Riverside Sports Club",
+  "appName": "Riverside CommitteeHub",
+  "shortName": "Riverside",
+  "brand": {
+    "accent": "#1F5FA8",
+    "logoBadge": false
+  },
+  "admin": {
+    "email": "chair@riverside.example.org",
+    "name": "Alex Chair",
+    "pin": "000000"
+  },
+  "roles": ["Chairperson", "Vice Chair", "Secretary", "Treasurer", "Committee Member"],
+  "skillAreas": ["Governance & Rules", "Finance & Admin", "Events", "Communications & Media"],
+  "features": {
+    "minutesImport": false,
+    "emailLinkSignIn": false
+  }
+}

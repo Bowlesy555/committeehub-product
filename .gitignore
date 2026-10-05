@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# per-committee files (details, keys, logos) and generated icons
+/customers/
+/brand-out/

@@ -58,5 +58,8 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Static files a signed-out browser still needs -- the PWA manifest, the
+  // service worker and the icons -- are skipped, or they'd be redirected to
+  // the login page and the app couldn't be installed from there.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|.*\.(?:png|svg|ico)$).*)"],
 };

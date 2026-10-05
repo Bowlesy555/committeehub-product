@@ -17,6 +17,7 @@ export default function AdminPage() {
     groupMembers,
     roles,
     memberRoles,
+    skillAreas,
     isGroupAdmin,
     amAnyGroupAdmin,
     supabase,
@@ -24,6 +25,10 @@ export default function AdminPage() {
   const showToast = useToast();
 
   const sortedRoles = Object.values(roles).sort(
+    (a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label)
+  );
+
+  const sortedSkillAreas = Object.values(skillAreas).sort(
     (a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label)
   );
 
@@ -52,6 +57,7 @@ export default function AdminPage() {
   const [pinFor, setPinFor] = useState<Record<string, string>>({});
   const [settingPinFor, setSettingPinFor] = useState<string | null>(null);
   const [newRoleLabel, setNewRoleLabel] = useState("");
+  const [newSkillAreaLabel, setNewSkillAreaLabel] = useState("");
   const [offboarding, setOffboarding] = useState<string | null>(null);
   const [offboardingBusy, setOffboardingBusy] = useState(false);
 
@@ -277,6 +283,30 @@ export default function AdminPage() {
 
   async function removeRole(id: string) {
     const { error } = await supabase.from("roles").delete().eq("id", id);
+    if (error) showToast(error.message);
+  }
+
+  async function addSkillArea() {
+    const label = newSkillAreaLabel.trim();
+    if (!label) return;
+    // skill_areas.id is a readable text key rather than a uuid, so make one
+    // from the label and nudge it until it's unused.
+    const base = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "skill";
+    let id = base;
+    for (let n = 2; skillAreas[id]; n++) id = `${base}-${n}`;
+    const nextOrder = Math.max(0, ...sortedSkillAreas.map((s) => s.sort_order)) + 1;
+    const { error } = await supabase.from("skill_areas").insert({ id, label, sort_order: nextOrder });
+    if (error) showToast(error.message);
+    else {
+      setNewSkillAreaLabel("");
+      showToast("Skill area added");
+    }
+  }
+
+  async function removeSkillArea(id: string) {
+    const label = skillAreas[id]?.label || "this skill area";
+    if (!confirm(`Remove "${label}"? Members' ratings for it and its tags on tasks are removed too.`)) return;
+    const { error } = await supabase.from("skill_areas").delete().eq("id", id);
     if (error) showToast(error.message);
   }
 
@@ -703,6 +733,32 @@ export default function AdminPage() {
               />
               <button className="btn sm" onClick={addRole} disabled={!newRoleLabel.trim()}>
                 Add role
+              </button>
+            </div>
+          </div>
+
+          <div className="section-title">
+            <h2>Skill areas</h2>
+            <span className="hint">The columns of the Skills matrix, and the tags on tasks</span>
+          </div>
+          <div className="card pad">
+            <div className="row wrap">
+              {sortedSkillAreas.map((s) => (
+                <span className="chip" key={s.id}>
+                  {s.label}
+                  <button onClick={() => removeSkillArea(s.id)}>✕</button>
+                </span>
+              ))}
+            </div>
+            <div className="row" style={{ marginTop: 10 }}>
+              <input
+                className="input"
+                value={newSkillAreaLabel}
+                onChange={(e) => setNewSkillAreaLabel(e.target.value)}
+                placeholder="e.g. Safeguarding"
+              />
+              <button className="btn sm" onClick={addSkillArea} disabled={!newSkillAreaLabel.trim()}>
+                Add skill area
               </button>
             </div>
           </div>

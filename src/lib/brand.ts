@@ -15,13 +15,15 @@ function clean(v: string | undefined): string {
   return (v ?? "").trim();
 }
 
-function isHex(v: string): boolean {
-  return /^#[0-9a-fA-F]{6}$/.test(v);
+// A colour as #RRGGBB. The # is optional because an unquoted # starts a
+// comment in a .env file, which silently empties the value.
+function hex(v: string | undefined): string | null {
+  const m = clean(v).match(/^#?([0-9a-fA-F]{6})$/);
+  return m ? `#${m[1]}` : null;
 }
 
 const orgName = clean(process.env.NEXT_PUBLIC_ORG_NAME);
-const accentEnv = clean(process.env.NEXT_PUBLIC_BRAND_ACCENT);
-const accentDarkEnv = clean(process.env.NEXT_PUBLIC_BRAND_ACCENT_DARK);
+const accentEnv = hex(process.env.NEXT_PUBLIC_BRAND_ACCENT);
 const iconBase = clean(process.env.NEXT_PUBLIC_BRAND_ICON_BASE_URL).replace(/\/+$/, "");
 
 export const brand = {
@@ -33,9 +35,9 @@ export const brand = {
   // Shown under a phone's home-screen icon, where long names get cut off.
   shortName: clean(process.env.NEXT_PUBLIC_APP_SHORT_NAME) || PRODUCT_NAME,
   description: "Committee spaces, decisions, tasks and skills",
-  accent: isHex(accentEnv) ? accentEnv : DEFAULT_ACCENT,
-  hasCustomAccent: isHex(accentEnv),
-  accentDark: isHex(accentDarkEnv) ? accentDarkEnv : null,
+  accent: accentEnv ?? DEFAULT_ACCENT,
+  hasCustomAccent: accentEnv !== null,
+  accentDark: hex(process.env.NEXT_PUBLIC_BRAND_ACCENT_DARK),
   logoUrl: clean(process.env.NEXT_PUBLIC_BRAND_LOGO_URL) || null,
   // For a logo with an opaque white background, which needs a white badge
   // behind it rather than sitting directly on the topbar.
