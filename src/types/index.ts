@@ -201,7 +201,7 @@ export interface Meeting {
 }
 
 // A pointer to a file already stored in Google Drive -- never the file
-// itself. See supabase/schema.sql for why (Supabase free-tier egress, not
+// itself. See the baseline migration in supabase/migrations for why (Supabase free-tier egress, not
 // storage space, is the constraint that keeps Drive as the real file store).
 export interface Document {
   id: string;

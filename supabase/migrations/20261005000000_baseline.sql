@@ -1,5 +1,7 @@
--- Quorum database schema + row level security
--- Run this once in the Supabase SQL editor (Project > SQL Editor > New query) on a fresh project.
+-- Baseline schema + row level security.
+-- Applied once to a fresh Supabase project. Never edit this file after it has
+-- been applied anywhere -- add a new timestamped migration alongside it instead.
+-- Reference data (skill areas, roles) lives in supabase/seed.sql, not here.
 
 create extension if not exists "pgcrypto";
 
@@ -917,40 +919,3 @@ alter publication supabase_realtime add table
   public.tasks, public.task_skill_tags, public.member_skills, public.space_reads,
   public.notifications, public.documents, public.meetings, public.task_assignees, public.space_topics, public.document_links,
   public.library_items, public.library_item_groups;
-
--- ============================== seed reference data ==============================
--- Skill areas and roles are shared UI reference data, not committee-specific —
--- safe to seed directly. Roles can be added to later from the Admin tab.
-
-insert into public.skill_areas (id, label, sort_order) values
-  ('rules', 'Rules & Regulations', 1),
-  ('events', 'Events & Championships', 2),
-  ('media', 'Media & Communications', 3),
-  ('membership', 'Membership & Applications', 4),
-  ('sponsorship', 'Sponsorship & Fundraising', 5),
-  ('welfare', 'Welfare & Conduct', 6),
-  ('it', 'IT & Digital', 7),
-  ('judging', 'Judging', 8),
-  ('awards', 'Awards & Recognition', 9),
-  ('finance', 'Finance & Admin', 10)
-on conflict (id) do nothing;
-
-insert into public.roles (label, sort_order) values
-  ('Chairperson', 1),
-  ('Vice Chair', 2),
-  ('Secretary', 3),
-  ('Treasurer', 4),
-  ('Committee Member', 5),
-  ('Membership Secretary', 6),
-  ('Media Team', 7),
-  ('Judges Board', 8),
-  ('Awards Secretary', 9),
-  ('Show Secretary', 10),
-  ('Complaints Officer', 11)
-on conflict (label) do nothing;
-
--- ============================== bootstrap note ==============================
--- After you sign in for the first time (via the app's magic-link login), run:
---   update public.profiles set is_global_admin = true where email = 'you@example.com';
--- That makes you the first admin, who can then invite the rest of the committee
--- and create groups from the Admin tab.

@@ -7,9 +7,12 @@ deployed on Vercel.
 ## 1. Create the Supabase project
 
 1. Create a new project at [supabase.com](https://supabase.com).
-2. In **SQL Editor**, paste the contents of [`supabase/schema.sql`](supabase/schema.sql)
-   and run it. This creates every table, the row-level-security policies, the
-   quorum-resolution trigger, and seeds the fixed list of skill areas.
+2. In **SQL Editor**, paste and run each file in
+   [`supabase/migrations/`](supabase/migrations) in filename order (just the
+   baseline, on day one). This creates every table, the row-level-security
+   policies and the triggers. Then paste and run
+   [`supabase/seed.sql`](supabase/seed.sql) for the default skill areas and
+   roles — or the committee's own lists in its place.
 3. In **Authentication → Sign In / Providers → Email**, turn **off** "Allow
    new users to sign up". Members are added by an admin invite (Admin tab in
    the app), not by anyone typing in their own email — leaving signups open
@@ -144,9 +147,14 @@ Admin tab if that's easier for less technical members.
 
 ## Project shape
 
-- `supabase/schema.sql` — the entire database: tables, RLS policies, the
-  `handle_new_user` trigger (auth user → profile row) and the
-  `recompute_decision_status` trigger (votes → passed/failed).
+- `supabase/migrations/` — the database, as ordered migrations: tables, RLS
+  policies, the `handle_new_user` trigger (auth user → profile row) and the
+  `recompute_decision_status` trigger (votes → passed/failed). Every schema
+  change is a new timestamped file here, applied to every deployment's
+  database before the code that needs it ships; an applied file is never
+  edited. Keep changes backward-compatible (add, don't rename or drop) so the
+  previous version of the app keeps working while deployments catch up.
+- `supabase/seed.sql` — default skill areas and roles for a new committee.
 - `src/proxy.ts` — Next.js 16's replacement for middleware; refreshes the
   Supabase session cookie and redirects signed-out visitors to `/login`.
 - `src/lib/data-store.tsx` — a client-side realtime store: subscribes to every
