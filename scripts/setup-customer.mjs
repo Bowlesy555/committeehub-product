@@ -108,8 +108,10 @@ const lines = [
   ["NEXT_PUBLIC_ORG_NAME", customer.orgName],
   ["NEXT_PUBLIC_APP_NAME", customer.appName],
   ["NEXT_PUBLIC_APP_SHORT_NAME", customer.shortName],
-  ["NEXT_PUBLIC_BRAND_ACCENT", b.accent],
-  ["NEXT_PUBLIC_BRAND_ACCENT_DARK", b.accentDark],
+  // Printed without the leading # -- pasted into a .env file, an unquoted #
+  // would start a comment and empty the value. The app accepts either form.
+  ["NEXT_PUBLIC_BRAND_ACCENT", b.accent?.replace(/^#/, "")],
+  ["NEXT_PUBLIC_BRAND_ACCENT_DARK", b.accentDark?.replace(/^#/, "")],
   ["NEXT_PUBLIC_BRAND_LOGO_BADGE", b.logoBadge ? "true" : undefined],
   ["NEXT_PUBLIC_FEATURE_MINUTES_IMPORT", f.minutesImport ? "true" : undefined],
   ["NEXT_PUBLIC_MINUTES_IMPORT_PROFILE", f.minutesImportProfile ? JSON.stringify(f.minutesImportProfile) : undefined],
