@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { brand, features } from "@/lib/brand";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -70,12 +71,11 @@ export default function LoginPage() {
     <div className="login-wrap">
       <div className="login-card">
         <div className="login-hero">
-          <div className="mark">CommitteeHub</div>
-          <div className="tag">
-            Committee spaces, decisions, tasks and skills
-          </div>
+          <div className="mark">{brand.appName}</div>
+          <div className="tag">{brand.description}</div>
         </div>
         <div className="card pad">
+          {features.emailLinkSignIn && (
           <div className="tabs" style={{ padding: 0, marginBottom: 16, position: "static" }}>
             <button
               type="button"
@@ -92,6 +92,7 @@ export default function LoginPage() {
               Email link
             </button>
           </div>
+          )}
 
           {mode === "pin" ? (
             <form className="stack" onSubmit={handlePinSubmit}>
@@ -132,8 +133,9 @@ export default function LoginPage() {
                 {status === "sending" ? "Signing in…" : "Sign in"}
               </button>
               <p className="help">
-                No PIN yet? Use the email link tab instead, then set one from
-                your account menu once you&apos;re signed in.
+                {features.emailLinkSignIn
+                  ? "No PIN yet? Use the email link tab instead, then set one from your account menu once you're signed in."
+                  : "No PIN yet, or forgotten it? Ask a committee admin to set one for you."}
               </p>
             </form>
           ) : status === "sent" ? (

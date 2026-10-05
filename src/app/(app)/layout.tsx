@@ -7,6 +7,7 @@ import { AppDataProvider, useAppData } from "@/lib/data-store";
 import { ToastProvider, useToast } from "@/lib/toast";
 import { initials, colorFor } from "@/lib/format";
 import { roleLabelsFor } from "@/lib/roles";
+import { brand } from "@/lib/brand";
 import { Modal } from "@/components/Modal";
 
 const TABS: [string, string][] = [
@@ -44,7 +45,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const [savingPin, setSavingPin] = useState(false);
 
   if (!authReady || (userId && !dataReady)) {
-    return <div className="empty" style={{ paddingTop: 80 }}>Loading CommitteeHub…</div>;
+    return <div className="empty" style={{ paddingTop: 80 }}>Loading {brand.appName}…</div>;
   }
 
   if (userId && !me) {
@@ -94,8 +95,16 @@ function Shell({ children }: { children: React.ReactNode }) {
     <div className="app-shell">
       <div className="topbar">
         <div className="brand">
+          {brand.logoUrl && (
+            <div className={brand.logoBadge ? "brand-logo-badge" : undefined}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- the
+                  logo's address is per-deployment config, not a known host
+                  next/image could be set up to optimise. */}
+              <img src={brand.logoUrl} alt="" className="brand-logo" />
+            </div>
+          )}
           <div className="brand-text">
-            <span className="mark">CommitteeHub</span>
+            <span className="mark">{brand.appName}</span>
           </div>
         </div>
         {me && (

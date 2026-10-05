@@ -1,8 +1,12 @@
 import "server-only";
+import { brand } from "@/lib/brand";
 
 export async function sendEmail(to: string, subject: string, html: string) {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+  const address = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+  // Show the committee's app name as the sender, unless the address already
+  // carries a display name of its own.
+  const from = address.includes("<") ? address : `${brand.appName} <${address}>`;
 
   if (!apiKey) {
     console.warn("RESEND_API_KEY not set — skipping email:", subject, "to", to);

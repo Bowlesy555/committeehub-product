@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Newsreader, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
+import { brand, brandThemeCss } from "@/lib/brand";
 import "./globals.css";
 
 const newsreader = Newsreader({
@@ -22,35 +23,37 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CommitteeHub",
-  description: "Committee spaces, decisions, tasks and skills",
+  title: brand.appName,
+  description: brand.description,
   icons: {
     icon: [
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: brand.icons.icon192, sizes: "192x192", type: "image/png" },
+      { url: brand.icons.icon512, sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    apple: [{ url: brand.icons.appleTouch, sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
-    title: "CommitteeHub",
+    title: brand.shortName,
     statusBarStyle: "default",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2E6F5C",
+  themeColor: brand.accent,
   width: "device-width",
   initialScale: 1,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  const themeCss = brandThemeCss();
   return (
     <html
       lang="en"
       className={`${newsreader.variable} ${plexSans.variable} ${plexMono.variable}`}
     >
       <body>
+        {themeCss && <style>{themeCss}</style>}
         {children}
         <ServiceWorkerRegistration />
       </body>

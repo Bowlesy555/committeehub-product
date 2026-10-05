@@ -1,18 +1,19 @@
 import type { MetadataRoute } from "next";
+import { brand } from "@/lib/brand";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "CommitteeHub",
-    short_name: "CommitteeHub",
-    description: "Committee spaces, decisions, tasks and skills",
+    name: brand.appName,
+    short_name: brand.shortName,
+    description: brand.description,
     start_url: "/dashboard",
     display: "standalone",
     background_color: "#F5F6F1",
-    theme_color: "#2E6F5C",
+    theme_color: brand.accent,
     icons: [
-      { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-      { src: "/icon-512-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: brand.icons.icon192, sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: brand.icons.icon512, sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: brand.icons.maskable512, sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   };
 }

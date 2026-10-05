@@ -9,6 +9,7 @@ import { isGoogleDriveUrl } from "@/lib/documents";
 import { roomLink } from "@/lib/rooms";
 import { Modal } from "@/components/Modal";
 import { LibraryItemModal } from "@/components/LibraryItemModal";
+import { PRODUCT_NAME } from "@/lib/brand";
 import type { Document } from "@/types";
 
 export default function DocumentsPage() {
@@ -142,7 +143,7 @@ export default function DocumentsPage() {
         </button>
       </div>
       <p className="section-desc">
-        Links to files kept in Google Drive — CommitteeHub only stores where to find them, not
+        Links to files kept in Google Drive — {PRODUCT_NAME} only stores where to find them, not
         the files themselves. Anyone opening a link will still need Google Drive access to it.
       </p>
 

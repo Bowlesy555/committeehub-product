@@ -7,6 +7,7 @@ import { useToast } from "@/lib/toast";
 import { fmtDate, fmtDateTime, toLocalInput } from "@/lib/format";
 import { matchMember, parseActionItems } from "@/lib/action-items";
 import { Modal } from "@/components/Modal";
+import { features } from "@/lib/brand";
 import type { Meeting } from "@/types";
 
 type CalItem = {
@@ -241,9 +242,11 @@ export default function CalendarPage() {
       <div className="section-title">
         <h2>Calendar</h2>
         <div className="row">
-          <button className="btn sm" onClick={() => openImport()}>
-            📋 Import action items
-          </button>
+          {features.minutesImport && (
+            <button className="btn sm" onClick={() => openImport()}>
+              📋 Import action items
+            </button>
+          )}
           <button className="btn primary sm" onClick={openCreate}>
             + New meeting
           </button>
@@ -295,9 +298,11 @@ export default function CalendarPage() {
                   {row}
                   {isMeeting ? (
                     <div className="row calendar-actions" style={{ gap: 6 }}>
-                      <button className="btn ghost sm" onClick={() => openImport(item.meeting!)}>
-                        Import action items
-                      </button>
+                      {features.minutesImport && (
+                        <button className="btn ghost sm" onClick={() => openImport(item.meeting!)}>
+                          Import action items
+                        </button>
+                      )}
                       <button className="btn ghost sm" onClick={() => openEdit(item.meeting!)}>
                         Edit
                       </button>

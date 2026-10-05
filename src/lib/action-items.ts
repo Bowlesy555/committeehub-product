@@ -10,20 +10,57 @@ export type ParsedActionItem = {
   notes: string;
 };
 
-// Matches a typical committee action log template: Ref | Action description |
-// Owner | Priority | Deadline | Status | Notes / update. A recognised
-// header row is matched by these (normalised) names so column order can
-// vary; anything else falls back to this exact positional order.
-const HEADER_ALIASES: Record<string, string[]> = {
-  description: ["action description", "action", "description", "item", "task"],
-  owner: ["owner", "assignee", "who", "responsible"],
-  priority: ["priority", "pri"],
-  deadline: ["deadline", "due", "due date", "date"],
-  status: ["status"],
-  notes: ["notes", "notes / update", "update", "comments"],
+// The defaults match a typical committee action log: Ref | Action description |
+// Owner | Priority | Deadline | Status | Notes / update. A recognised header
+// row is matched by these (normalised) names so column order can vary;
+// anything else falls back to the positional order.
+//
+// Every committee lays its action log out differently, so each of these
+// tables can be replaced per deployment by NEXT_PUBLIC_MINUTES_IMPORT_PROFILE
+// (JSON, same shape as ImportProfile) -- calibrated against that committee's
+// real template rather than by editing this file.
+type ImportProfile = {
+  headerAliases: Record<string, string[]>;
+  positionalColumns: string[];
+  // Each list is matched as "the cell contains any of these words".
+  priorityWords: { high: string[]; low: string[] };
+  statusWords: { doing: string[]; done: string[]; blocked: string[] };
 };
 
-const POSITIONAL_COLUMNS = ["ref", "description", "owner", "priority", "deadline", "status", "notes"];
+const DEFAULT_PROFILE: ImportProfile = {
+  headerAliases: {
+    description: ["action description", "action", "description", "item", "task"],
+    owner: ["owner", "assignee", "who", "responsible"],
+    priority: ["priority", "pri"],
+    deadline: ["deadline", "due", "due date", "date"],
+    status: ["status"],
+    notes: ["notes", "notes / update", "update", "comments"],
+  },
+  positionalColumns: ["ref", "description", "owner", "priority", "deadline", "status", "notes"],
+  priorityWords: { high: ["h"], low: ["l"] },
+  statusWords: { doing: ["progress"], done: ["done", "complete"], blocked: ["block"] },
+};
+
+function loadProfile(): ImportProfile {
+  const raw = process.env.NEXT_PUBLIC_MINUTES_IMPORT_PROFILE;
+  if (!raw) return DEFAULT_PROFILE;
+  try {
+    const custom = JSON.parse(raw) as Partial<ImportProfile>;
+    return {
+      headerAliases: { ...DEFAULT_PROFILE.headerAliases, ...custom.headerAliases },
+      positionalColumns: custom.positionalColumns ?? DEFAULT_PROFILE.positionalColumns,
+      priorityWords: { ...DEFAULT_PROFILE.priorityWords, ...custom.priorityWords },
+      statusWords: { ...DEFAULT_PROFILE.statusWords, ...custom.statusWords },
+    };
+  } catch {
+    console.warn("NEXT_PUBLIC_MINUTES_IMPORT_PROFILE is not valid JSON -- using the default profile");
+    return DEFAULT_PROFILE;
+  }
+}
+
+const PROFILE = loadProfile();
+const HEADER_ALIASES = PROFILE.headerAliases;
+const POSITIONAL_COLUMNS = PROFILE.positionalColumns;
 
 function normalize(s: string): string {
   return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -48,16 +85,17 @@ function detectHeader(cells: string[]): Record<string, number> | null {
 
 function parsePriority(s: string): TaskPriority {
   const v = s.trim().toLowerCase();
-  if (v.startsWith("h")) return "high";
-  if (v.startsWith("l")) return "low";
+  if (PROFILE.priorityWords.high.some((w) => v.startsWith(w))) return "high";
+  if (PROFILE.priorityWords.low.some((w) => v.startsWith(w))) return "low";
   return "normal";
 }
 
 function parseStatus(s: string): TaskStatus {
   const v = s.trim().toLowerCase();
-  if (v.includes("progress")) return "doing";
-  if (v.includes("done") || v.includes("complete")) return "done";
-  if (v.includes("block")) return "blocked";
+  const { doing, done, blocked } = PROFILE.statusWords;
+  if (doing.some((w) => v.includes(w))) return "doing";
+  if (done.some((w) => v.includes(w))) return "done";
+  if (blocked.some((w) => v.includes(w))) return "blocked";
   return "todo";
 }
 

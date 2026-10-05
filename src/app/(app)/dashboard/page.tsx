@@ -7,6 +7,7 @@ import { countdownText, firstName, fmtDateTime, greeting, timeAgo, truncate } fr
 import { buildActivityFeed } from "@/lib/activity";
 import { roomDisplayName, roomLink } from "@/lib/rooms";
 import { assigneeIdsOf } from "@/lib/tasks";
+import { brand, PRODUCT_NAME } from "@/lib/brand";
 import { isDefaultVoteOptions, type VoteChoice } from "@/types";
 
 const DEADLINE_SOON_MS = 48 * 60 * 60 * 1000;
@@ -185,7 +186,7 @@ export default function DashboardPage() {
       <h1 className="welcome">
         {greeting()}, {firstName(me?.name)} — here&apos;s what needs your attention
       </h1>
-      <p className="welcome-sub">This is your home base for CommitteeHub.</p>
+      <p className="welcome-sub">This is your home base for {brand.appName}.</p>
 
       <div className="section-title">
         <h2>Your attention needed</h2>
@@ -298,7 +299,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="section-title">
-        <h2>How CommitteeHub works</h2>
+        <h2>How {PRODUCT_NAME} works</h2>
       </div>
       <div className="workflow-steps">
         <div className="workflow-step">

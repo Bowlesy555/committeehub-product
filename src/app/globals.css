@@ -49,6 +49,8 @@ button{ font-family:inherit; }
   padding:12px 20px; background:var(--surface); border-bottom:1px solid var(--line);
 }
 .brand{ display:flex; align-items:center; gap:10px; min-width:0; }
+.brand-logo-badge{ background:#fff; border-radius:9px; padding:4px 7px; display:flex; align-items:center; flex:none; }
+.brand-logo{ height:46px; width:auto; display:block; }
 .brand-text{ display:flex; align-items:baseline; gap:8px; min-width:0; }
 .brand .mark{ font-family:var(--font-newsreader), serif; font-weight:600; font-size:20px; letter-spacing:.2px; white-space:nowrap; }
 .brand .sub{ font-size:11.5px; color:var(--muted); letter-spacing:.03em; white-space:nowrap; }
