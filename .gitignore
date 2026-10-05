@@ -44,3 +44,6 @@ next-env.d.ts
 # per-committee files (details, keys, logos) and generated icons
 /customers/
 /brand-out/
+
+# sales material and the running to-do list (business, not product)
+/sales/
