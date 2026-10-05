@@ -3,6 +3,10 @@
 // meetings, documents and skills.
 //
 //   node --env-file=customers/demo.env scripts/seed-demo.mjs --reset
+//   node --env-file=customers/villagehall.env scripts/seed-demo.mjs --scenario village-hall --reset
+//
+// The committee itself is described in scripts/demo-scenarios/<name>.mjs
+// (default: sports-club); this file only knows how to load one.
 //
 // --reset wipes every group (and with it every room, message, decision,
 // task, meeting and document), the library, and every fictional member this
@@ -22,9 +26,19 @@ if (!url || !key) {
 }
 const db = createClient(url, key, { auth: { persistSession: false } });
 
+const scenarioFlag = process.argv.indexOf("--scenario");
+const scenarioName = scenarioFlag === -1 ? "sports-club" : process.argv[scenarioFlag + 1];
+let scenario;
+try {
+  scenario = (await import(`./demo-scenarios/${scenarioName}.mjs`)).default;
+} catch {
+  console.error(`No scenario called "${scenarioName}" in scripts/demo-scenarios/`);
+  process.exit(1);
+}
+
 // Fictional members are recognised by this address ending, which can never
 // belong to a real person (.example is reserved for exactly this).
-const DEMO_DOMAIN = "@riverside-demo.example";
+const DEMO_DOMAIN = "-demo.example";
 
 async function run(step, promise) {
   const { data, error } = await promise;
@@ -49,11 +63,11 @@ const existingGroups = await run("Reading groups", db.from("groups").select("id"
 if (existingGroups.length && !process.argv.includes("--reset")) {
   console.error(
     `${url} already has ${existingGroups.length} group(s).\n` +
-      "Re-run with --reset to wipe them and rebuild the demo. Only ever do this on the demo project."
+      "Re-run with --reset to wipe them and rebuild the demo. Only ever do this on a demo project."
   );
   process.exit(1);
 }
-console.log(`Seeding demo content into ${url}`);
+console.log(`Seeding the "${scenarioName}" demo into ${url}`);
 await run("Clearing groups", db.from("groups").delete().not("id", "is", null));
 await run("Clearing private chats", db.from("spaces").delete().not("id", "is", null));
 await run("Clearing the library", db.from("library_items").delete().not("id", "is", null));
@@ -66,29 +80,21 @@ for (const p of oldDemo) {
 
 // ---- members -----------------------------------------------------------
 
-// name, roles, capacity, skills as [skill area label, level 1-3]
-const PEOPLE = [
-  ["Margaret Ellis", ["Chairperson"], "available", [["Governance & Rules", 3], ["Events", 2], ["Welfare & Conduct", 2]]],
-  ["David Okafor", ["Vice Chair"], "available", [["Governance & Rules", 2], ["Fundraising & Sponsorship", 3]]],
-  ["Priya Shah", ["Secretary"], "stretched", [["Governance & Rules", 3], ["Communications & Media", 2], ["Membership", 2]]],
-  ["Tom Whitaker", ["Treasurer"], "available", [["Finance & Admin", 3], ["Fundraising & Sponsorship", 2]]],
-  ["Hannah Lloyd", ["Welfare Officer", "Committee Member"], "available", [["Welfare & Conduct", 3], ["Membership", 1]]],
-  ["Marcus Bell", ["Fixtures Secretary"], "available", [["Events", 3], ["IT & Digital", 1]]],
-  ["Sophie Tran", ["Committee Member"], "available", [["Communications & Media", 3], ["IT & Digital", 3]]],
-  ["George Patel", ["Committee Member"], "away", [["Finance & Admin", 2], ["Events", 2]]],
-  ["Aisha Rahman", ["Committee Member"], "available", [["Membership", 3], ["Events", 2], ["Communications & Media", 1]]],
-  ["Chris Nowak", ["Committee Member"], "stretched", [["IT & Digital", 2], ["Fundraising & Sponsorship", 1]]],
-];
-
 const roles = await run("Reading roles", db.from("roles").select("id,label"));
 const skillAreas = await run("Reading skill areas", db.from("skill_areas").select("id,label"));
 const roleId = (label) => roles.find((r) => r.label === label)?.id;
 const skillId = (label) => skillAreas.find((s) => s.label === label)?.id;
 
-const m = {}; // first name -> profile id
-for (const [name, roleLabels, capacity, skills] of PEOPLE) {
+// Everything in a scenario refers to people by first name.
+const m = {};
+const who = (first) => {
+  if (!m[first]) throw new Error(`Scenario mentions "${first}", who isn't in its people list`);
+  return m[first];
+};
+
+for (const [name, roleLabels, capacity, skills] of scenario.people) {
   const first = name.split(" ")[0];
-  const email = `${name.toLowerCase().replace(" ", ".")}${DEMO_DOMAIN}`;
+  const email = `${name.toLowerCase().replace(/[^a-z]+/g, ".")}@${scenario.slug}${DEMO_DOMAIN}`;
   // A long random password nobody knows: these people exist to be seen in
   // the demo, not to sign in.
   const { data, error } = await db.auth.admin.createUser({
@@ -114,273 +120,167 @@ for (const [name, roleLabels, capacity, skills] of PEOPLE) {
 // Real accounts (the person giving the demo) join everything too.
 const real = await run("Reading real accounts", db.from("profiles").select("id").not("email", "like", `%${DEMO_DOMAIN}`));
 const realIds = real.map((p) => p.id);
-const everyone = [...Object.values(m), ...realIds];
 
 // ---- groups ------------------------------------------------------------
 
-async function group(name, kind, description, default_quorum, memberIds, adminIds) {
-  const [g] = await run(`Creating ${name}`, db.from("groups").insert({ name, kind, description, default_quorum }).select());
+const groups = {};
+for (const g of scenario.groups) {
+  const [row] = await run(
+    `Creating ${g.name}`,
+    db.from("groups").insert({ name: g.name, kind: g.kind, description: g.description, default_quorum: g.quorum }).select()
+  );
+  groups[g.key] = row.id;
+  const firstNames = g.members === "everyone" ? Object.keys(m) : g.members;
+  const memberIds = [...new Set([...firstNames.map(who), ...realIds])];
   await run(
-    `Adding members to ${name}`,
+    `Adding members to ${g.name}`,
     db.from("group_members").insert(
-      [...new Set(memberIds)].map((member_id) => ({
-        group_id: g.id,
+      memberIds.map((member_id) => ({
+        group_id: row.id,
         member_id,
-        is_admin: adminIds.includes(member_id) || realIds.includes(member_id),
+        is_admin: g.admins.map(who).includes(member_id) || realIds.includes(member_id),
       }))
     )
   );
-  return g.id;
 }
-
-const committee = await group(
-  "Main Committee", "committee", "The full elected committee. Formal decisions are made here.", 6,
-  everyone, [m.Margaret, m.Priya]
-);
-const gala = await group(
-  "Summer Gala Working Party", "working-party", "Planning the July fundraising gala and awards evening.", 3,
-  [m.David, m.Marcus, m.Aisha, m.Sophie, m.Tom, ...realIds], [m.David]
-);
-const clubhouse = await group(
-  "Clubhouse Refurbishment", "working-party", "Changing rooms, roof repairs and the grant application to pay for them.", 3,
-  [m.Tom, m.George, m.Chris, m.Hannah, m.Margaret, ...realIds], [m.Tom]
-);
 
 // ---- rooms, topics and conversation -------------------------------------
 
-async function room(group_id, name, created_by, opts = {}) {
-  const [s] = await run(`Creating room ${name}`, db.from("spaces").insert({ group_id, name, created_by, ...opts }).select());
-  return s.id;
-}
-async function topic(space_id, name, created_by) {
-  const [t] = await run(`Creating topic ${name}`, db.from("space_topics").insert({ space_id, name, created_by }).select());
-  return t.id;
-}
-// lines: [author, text]; spread evenly from `startDaysAgo` to `endDaysAgo`.
-async function chat(space_id, topic_id, startDaysAgo, endDaysAgo, lines) {
-  const step = lines.length > 1 ? (startDaysAgo - endDaysAgo) / (lines.length - 1) : 0;
-  const rows = lines.map(([author, text], i) => {
-    const t = new Date(Date.now() - (startDaysAgo - step * i) * 86400000);
-    return { space_id, topic_id, author_id: m[author], text, created_at: t.toISOString() };
-  });
+// lines: [first name, text]; spread evenly between the two ages in days.
+async function chat(space_id, topic_id, fromDaysAgo, toDaysAgo, lines) {
+  const step = lines.length > 1 ? (fromDaysAgo - toDaysAgo) / (lines.length - 1) : 0;
   // One at a time and in order, so "latest message" on the room is right.
-  for (const row of rows) await run("Posting a message", db.from("messages").insert(row));
+  for (const [i, [author, text]] of lines.entries()) {
+    const t = new Date(Date.now() - (fromDaysAgo - step * i) * 86400000);
+    await run(
+      "Posting a message",
+      db.from("messages").insert({ space_id, topic_id, author_id: who(author), text, created_at: t.toISOString() })
+    );
+  }
 }
 
-const general = await room(committee, "General", m.Margaret, { pinned: true });
-await chat(general, null, 9, 0.2, [
-  ["Margaret", "Welcome to the new committee space, everyone. Agendas, decisions and actions all live here now, so nothing gets lost in email."],
-  ["Priya", "Minutes from last month are in the Library. Action items have been imported as tasks, so check the Tasks tab for anything with your name on it."],
-  ["Tom", "Accounts for the quarter are ready. Short version: we are about £1,400 ahead of budget, mostly thanks to the bar takings at the spring tournament."],
-  ["Hannah", "Reminder that safeguarding refreshers are due for anyone who coaches juniors. I'll message people individually."],
-  ["Marcus", "Fixture list for next season is drafted. I need the pitch availability from the council before I can confirm the home dates."],
-  ["Margaret", "Thanks all. Next meeting is in the Calendar. Please vote on the two open motions before then so we can keep the meeting short."],
-]);
+const rooms = {};
+const topics = {};
+for (const r of scenario.rooms) {
+  const [row] = await run(
+    `Creating room ${r.name}`,
+    db.from("spaces").insert({ group_id: groups[r.group], name: r.name, created_by: who(r.by), pinned: !!r.pinned }).select()
+  );
+  rooms[r.key] = row.id;
+  for (const t of r.topics ?? []) {
+    const [topic] = await run(
+      `Creating topic ${t.name}`,
+      db.from("space_topics").insert({ space_id: row.id, name: t.name, created_by: who(t.by) }).select()
+    );
+    topics[t.key] = topic.id;
+  }
+  for (const c of r.chats) await chat(row.id, c.topic ? topics[c.topic] : null, c.from, c.to, c.lines);
+}
 
-const membership = await room(committee, "Membership & Fees", m.Aisha);
-const feesTopic = await topic(membership, "2027 subscription rates", m.Aisha);
-const juniorTopic = await topic(membership, "Junior section waiting list", m.Hannah);
-await chat(membership, feesTopic, 6, 1, [
-  ["Aisha", "Membership is at 214, up 9% on last year. Proposal for 2027: adults £95 (from £90), juniors held at £40, family cap held at £220."],
-  ["Tom", "That covers the insurance increase with a little to spare. I'd support it."],
-  ["George", "Could we offer a discount for paying before the end of January? It would help cash flow in the quiet months."],
-  ["Aisha", "Good idea. I've put a motion up with an early-bird rate of £85."],
-]);
-await chat(membership, juniorTopic, 4, 2, [
-  ["Hannah", "We have 17 on the junior waiting list. The limit is coaches, not pitch time."],
-  ["Marcus", "Two parents have offered to do the Level 1 course if the club pays for it. About £180 each."],
-  ["Hannah", "That seems well worth it. I'll raise a task to get them booked."],
-]);
-
-const galaRoom = await room(gala, "Gala planning", m.David, { pinned: true });
-await chat(galaRoom, null, 8, 0.5, [
-  ["David", "Date is confirmed: Saturday 17 July. The marquee company can do the same package as last year for £1,850."],
-  ["Aisha", "Ticket price? Last year was £35 and we sold out in three weeks."],
-  ["Tom", "At £40 with 160 tickets we clear about £3,200 after costs, before the raffle and auction."],
-  ["Sophie", "I can have the poster and the online booking page ready by the end of the month if someone confirms the wording."],
-  ["Marcus", "Awards list is nearly done. I need the junior coaches' nominations by Friday."],
-  ["David", "Brilliant. Sponsors: two confirmed, one more to chase. I'll update the task when I hear back."],
-]);
-
-const refurb = await room(clubhouse, "Refurbishment & grant", m.Tom);
-const grantTopic = await topic(refurb, "Community facilities grant", m.Tom);
-await chat(refurb, grantTopic, 7, 1.5, [
-  ["Tom", "The community facilities fund opens next month. Maximum award is £25,000 and they want match funding of at least 20%."],
-  ["George", "We have three quotes for the roof: £14,200, £15,900 and £18,500. The cheapest can't start until October."],
-  ["Chris", "The application needs evidence of community use. I can pull the booking figures for the last two years."],
-  ["Hannah", "Accessible changing facilities should be in the bid. It scores highly and we genuinely need them."],
-  ["Tom", "Agreed. Draft application is in Documents. Comments by the 20th please."],
-]);
-
-// A private chat, to show that side of the app.
-if (realIds.length) {
+// A private chat to the person giving the demo, to show that side of the app.
+if (realIds.length && scenario.privateChat) {
+  const author = scenario.privateChat.from;
+  const fullName = scenario.people.find(([name]) => name.split(" ")[0] === author)[0];
   const [dm] = await run(
     "Creating a private chat",
-    db.from("spaces").insert({ name: "Margaret Ellis", visibility: "private", created_by: m.Margaret }).select()
+    db.from("spaces").insert({ name: fullName, visibility: "private", created_by: who(author) }).select()
   );
   await run(
     "Adding chat participants",
-    db.from("space_participants").insert([m.Margaret, realIds[0]].map((member_id) => ({ space_id: dm.id, member_id })))
+    db.from("space_participants").insert([who(author), realIds[0]].map((member_id) => ({ space_id: dm.id, member_id })))
   );
-  await chat(dm.id, null, 1, 0.1, [
-    ["Margaret", "Could we have a quick word before Thursday's meeting about the treasurer handover? Nothing urgent."],
-  ]);
+  await chat(dm.id, null, 1, 0.1, [[author, scenario.privateChat.text]]);
 }
 
 // ---- decisions ---------------------------------------------------------
 
-// votes: [first name, choice]. A decision that reaches its quorum resolves
-// itself (the database does this), exactly as it would in real use.
-async function decision(fields, votes, closedDaysAgo) {
-  const [d] = await run(`Creating motion ${fields.title}`, db.from("decisions").insert(fields).select());
-  for (const [who, choice] of votes) {
-    await run("Casting a vote", db.from("votes").insert({ decision_id: d.id, member_id: m[who], choice }));
+// A decision that reaches its quorum resolves itself (the database does
+// this), exactly as it would in real use.
+const decisions = {};
+for (const d of scenario.decisions) {
+  const [row] = await run(
+    `Creating motion ${d.title}`,
+    db.from("decisions").insert({
+      group_id: groups[d.group],
+      space_id: d.room ? rooms[d.room] : null,
+      topic_id: d.topic ? topics[d.topic] : null,
+      proposed_by: who(d.by),
+      quorum: d.quorum,
+      title: d.title,
+      motion_text: d.text,
+      ...(d.options ? { vote_options: d.options } : {}),
+      deadline: daysFromNow(d.deadline),
+      created_at: daysFromNow(d.created),
+    }).select()
+  );
+  if (d.key) decisions[d.key] = row.id;
+  for (const [voter, choice] of d.votes) {
+    await run("Casting a vote", db.from("votes").insert({ decision_id: row.id, member_id: who(voter), choice }));
   }
-  if (closedDaysAgo !== undefined) {
-    await run("Backdating a motion", db.from("decisions").update({ closed_at: daysFromNow(-closedDaysAgo) }).eq("id", d.id));
+  if (d.closedDaysAgo !== undefined) {
+    await run("Backdating a motion", db.from("decisions").update({ closed_at: daysFromNow(-d.closedDaysAgo) }).eq("id", row.id));
   }
-  return d.id;
 }
-
-await decision(
-  {
-    group_id: committee, space_id: membership, topic_id: feesTopic, proposed_by: m.Aisha, quorum: 6,
-    title: "2027 subscription rates",
-    motion_text: "That adult subscriptions rise to £95 for 2027, with an early-bird rate of £85 for payment before 31 January. Junior and family rates are held.",
-    deadline: daysFromNow(4), created_at: daysFromNow(-2),
-  },
-  [["Tom", "yes"], ["George", "yes"], ["Margaret", "yes"], ["Chris", "no"]]
-);
-await decision(
-  {
-    group_id: committee, space_id: membership, topic_id: juniorTopic, proposed_by: m.Hannah, quorum: 6,
-    title: "Fund two Level 1 coaching courses",
-    motion_text: "That the club pays for two volunteer parents to take the Level 1 coaching course, at a total cost of up to £360, to reduce the junior waiting list.",
-    deadline: daysFromNow(1), created_at: daysFromNow(-4),
-  },
-  [["Hannah", "yes"], ["Marcus", "yes"], ["Aisha", "yes"], ["Priya", "yes"], ["David", "yes"]]
-);
-await decision(
-  {
-    group_id: gala, space_id: galaRoom, proposed_by: m.David, quorum: 3,
-    title: "Gala ticket price",
-    motion_text: "What should a gala ticket cost this year?",
-    vote_options: ["£35", "£40", "£45", "abstain"],
-    deadline: daysFromNow(6), created_at: daysFromNow(-1),
-  },
-  [["Tom", "£40"], ["Aisha", "£40"], ["Sophie", "£35"]]
-);
-const marquee = await decision(
-  {
-    group_id: gala, space_id: galaRoom, proposed_by: m.David, quorum: 3,
-    title: "Book the marquee for 17 July",
-    motion_text: "That we accept the marquee quote of £1,850 and pay the 25% deposit now to secure the date.",
-    deadline: daysFromNow(-3), created_at: daysFromNow(-9),
-  },
-  [["David", "yes"], ["Tom", "yes"], ["Marcus", "yes"]],
-  6
-);
-await decision(
-  {
-    group_id: committee, space_id: general, proposed_by: m.Tom, quorum: 6,
-    title: "Approve the annual accounts",
-    motion_text: "That the committee approves the accounts for the year as presented by the Treasurer, for submission to the AGM.",
-    deadline: daysFromNow(-12), created_at: daysFromNow(-20),
-  },
-  [["Margaret", "yes"], ["David", "yes"], ["Priya", "yes"], ["Hannah", "yes"], ["Marcus", "yes"], ["Sophie", "yes"], ["George", "abstain"]],
-  14
-);
-await decision(
-  {
-    group_id: committee, space_id: general, proposed_by: m.Chris, quorum: 6,
-    title: "Move committee meetings to Monday evenings",
-    motion_text: "That monthly committee meetings move from Thursday to Monday evenings from next quarter.",
-    deadline: daysFromNow(-25), created_at: daysFromNow(-32),
-  },
-  [["Margaret", "no"], ["Priya", "no"], ["Tom", "no"], ["Hannah", "no"], ["Marcus", "no"], ["Aisha", "no"], ["Chris", "yes"], ["Sophie", "yes"]],
-  27
-);
 
 // ---- meetings ----------------------------------------------------------
 
-async function meeting(group_id, title, days, location, notes) {
-  const [mt] = await run(
-    `Creating meeting ${title}`,
-    db.from("meetings").insert({ group_id, title, scheduled_at: daysFromNow(days), location, notes, created_by: m.Priya }).select()
+const meetings = {};
+for (const mt of scenario.meetings) {
+  const [row] = await run(
+    `Creating meeting ${mt.title}`,
+    db.from("meetings").insert({
+      group_id: groups[mt.group], title: mt.title, scheduled_at: daysFromNow(mt.days),
+      location: mt.location, notes: mt.notes, created_by: who(scenario.secretary),
+    }).select()
   );
-  return mt.id;
+  if (mt.key) meetings[mt.key] = row.id;
 }
-const lastMeeting = await meeting(committee, "Committee meeting", -12, "Clubhouse, committee room", "Accounts approved. Subscription rates to be put to a vote. Action items imported to Tasks.");
-await meeting(committee, "Committee meeting", 5, "Clubhouse, committee room", "Agenda: subscription rates, junior coaching, refurbishment grant, AOB.");
-await meeting(gala, "Gala planning catch-up", 2, "Online", "Confirm ticket price, poster wording and sponsor list.");
-await meeting(clubhouse, "Site visit with roofing contractor", 9, "Clubhouse car park", "Meet the preferred contractor to agree start date and access.");
-await meeting(committee, "Annual General Meeting", 33, "Main hall", "Accounts, election of officers, subscription rates.");
 
 // ---- tasks -------------------------------------------------------------
 
-// [group, title, description, assignees, status, priority, due in days, skills, extra]
-const TASKS = [
-  [committee, "Send safeguarding refresher reminders", "Everyone who coaches juniors needs the refresher before the season starts.", ["Hannah"], "doing", "high", 3, ["Welfare & Conduct"], { meeting_id: lastMeeting }],
-  [committee, "Confirm pitch availability with the council", "Needed before the home fixture dates can be published.", ["Marcus"], "blocked", "high", -2, ["Events"], { meeting_id: lastMeeting }],
-  [committee, "Publish the 2027 fixture list", null, ["Marcus", "Sophie"], "todo", "normal", 14, ["Events", "Communications & Media"], {}],
-  [committee, "Book Level 1 coaching courses", "Two volunteer parents, subject to the motion passing.", ["Hannah"], "todo", "normal", 10, ["Welfare & Conduct", "Membership"], {}],
-  [committee, "Circulate AGM notice to members", "Must go out at least 21 days before the AGM.", ["Priya"], "todo", "high", 8, ["Governance & Rules"], {}],
-  [committee, "Renew club insurance", "Renewal quote received, up 6% on last year.", ["Tom"], "done", "normal", -6, ["Finance & Admin"], { meeting_id: lastMeeting }],
-  [committee, "Update the membership form for 2027 rates", null, ["Aisha"], "todo", "low", 20, ["Membership"], {}],
-  [gala, "Pay the marquee deposit", "25% of £1,850, as agreed.", ["Tom"], "done", "high", -5, ["Finance & Admin"], { decision_id: marquee }],
-  [gala, "Design the gala poster and booking page", null, ["Sophie"], "doing", "normal", 6, ["Communications & Media", "IT & Digital"], {}],
-  [gala, "Chase the third sponsor", "Two confirmed. The garage on Mill Lane said they were interested.", ["David"], "doing", "normal", 4, ["Fundraising & Sponsorship"], {}],
-  [gala, "Collect junior award nominations", null, ["Marcus", "Aisha"], "todo", "normal", 1, ["Events"], {}],
-  [gala, "Arrange raffle prizes", null, ["Aisha"], "todo", "low", 18, ["Fundraising & Sponsorship"], {}],
-  [clubhouse, "Draft the community facilities grant application", "Draft is in Documents. Comments by the 20th.", ["Tom", "Chris"], "doing", "high", 7, ["Fundraising & Sponsorship", "Finance & Admin"], {}],
-  [clubhouse, "Pull two years of community booking figures", "Evidence of community use for the grant bid.", ["Chris"], "todo", "normal", 5, ["IT & Digital"], {}],
-  [clubhouse, "Get a fourth roofing quote", null, ["George"], "todo", "low", 12, ["Finance & Admin"], {}],
-  [clubhouse, "Survey members on changing room priorities", null, ["Hannah"], "done", "normal", -10, ["Welfare & Conduct", "Membership"], {}],
-];
-for (const [group_id, title, description, who, status, priority, due, skills, extra] of TASKS) {
-  const [t] = await run(
-    `Creating task ${title}`,
+for (const t of scenario.tasks) {
+  // Already-due demo tasks shouldn't generate reminders the first time the
+  // daily job runs.
+  const flags = { due_reminder_sent: t.due <= 1, overdue_notified: t.due < 0 };
+  const [row] = await run(
+    `Creating task ${t.title}`,
     db.from("tasks").insert({
-      group_id, title, description, status, priority, due_date: dateFromNow(due),
-      assignee_id: m[who[0]], created_by: m.Priya,
-      // Already-due demo tasks shouldn't generate reminders the first time
-      // the daily job runs.
-      due_reminder_sent: due <= 1, overdue_notified: due < 0,
-      ...extra,
+      group_id: groups[t.group], title: t.title, description: t.description ?? null,
+      status: t.status, priority: t.priority, due_date: dateFromNow(t.due),
+      assignee_id: who(t.who[0]), created_by: who(scenario.secretary),
+      meeting_id: t.meeting ? meetings[t.meeting] : null,
+      decision_id: t.decision ? decisions[t.decision] : null,
+      ...flags,
     }).select()
   );
-  await run("Assigning a task", db.from("task_assignees").insert(who.map((w) => ({ task_id: t.id, member_id: m[w] }))));
-  const tags = skills.map(skillId).filter(Boolean).map((skill_id) => ({ task_id: t.id, skill_id }));
+  await run("Assigning a task", db.from("task_assignees").insert(t.who.map((w) => ({ task_id: row.id, member_id: who(w) }))));
+  const tags = t.skills.map(skillId).filter(Boolean).map((skill_id) => ({ task_id: row.id, skill_id }));
   if (tags.length) await run("Tagging a task", db.from("task_skill_tags").insert(tags));
   // task_assignees' trigger re-arms the reminder flags, so set them again.
-  await run("Settling reminder flags", db.from("tasks").update({ due_reminder_sent: due <= 1, overdue_notified: due < 0 }).eq("id", t.id));
+  await run("Settling reminder flags", db.from("tasks").update(flags).eq("id", row.id));
 }
 
 // ---- documents and library ---------------------------------------------
 
 // Placeholder addresses: the app only ever stores links to Google Drive.
-const drive = (n) => `https://docs.google.com/document/d/demo-${n}/edit`;
+const drive = (slug) => `https://docs.google.com/document/d/demo-${slug}/edit`;
 await run(
   "Adding documents",
-  db.from("documents").insert([
-    { group_id: committee, title: "Committee Meeting Minutes — last month", url: drive("minutes"), added_by: m.Priya },
-    { group_id: committee, title: "Annual accounts", url: drive("accounts"), added_by: m.Tom },
-    { group_id: gala, title: "Gala budget and running order", url: drive("gala-budget"), added_by: m.David },
-    { group_id: clubhouse, title: "Grant application — draft", url: drive("grant-draft"), added_by: m.Tom },
-    { group_id: clubhouse, title: "Roofing quotes (3)", url: drive("roof-quotes"), added_by: m.George },
-  ])
+  db.from("documents").insert(
+    scenario.documents.map((d) => ({ group_id: groups[d.group], title: d.title, url: drive(d.slug), added_by: who(d.by) }))
+  )
 );
 await run(
   "Adding library items",
-  db.from("library_items").insert([
-    { title: "Club Constitution", category: "Governance", description: "Adopted at the last AGM.", url: drive("constitution"), added_by: m.Priya },
-    { title: "Safeguarding Policy", category: "Policies", description: "Reviewed annually by the Welfare Officer.", url: drive("safeguarding"), added_by: m.Hannah },
-    { title: "Code of Conduct", category: "Policies", url: drive("conduct"), added_by: m.Hannah },
-    { title: "Expenses Claim Form", category: "Forms", url: drive("expenses"), added_by: m.Tom },
-    { title: "Committee Role Descriptions", category: "Governance", url: drive("roles"), added_by: m.Margaret },
-  ])
+  db.from("library_items").insert(
+    scenario.library.map((l) => ({
+      title: l.title, category: l.category, description: l.description ?? null, url: drive(l.slug), added_by: who(l.by),
+    }))
+  )
 );
 
 console.log(
-  `Done: ${PEOPLE.length} members, 3 groups, 4 rooms, 6 motions, 5 meetings, ${TASKS.length} tasks, 5 documents, 5 library items.`
+  `Done: ${scenario.people.length} members, ${scenario.groups.length} groups, ${scenario.rooms.length} rooms, ` +
+    `${scenario.decisions.length} motions, ${scenario.meetings.length} meetings, ${scenario.tasks.length} tasks, ` +
+    `${scenario.documents.length} documents, ${scenario.library.length} library items.`
 );

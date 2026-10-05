@@ -135,20 +135,29 @@ Off unless switched on for that committee.
   wording as `"minutesImportProfile"` in the JSON (the shape is
   `ImportProfile` in `src/lib/action-items.ts`). No code changes.
 
-## The sales demo
+## The sales demos
 
-The demo is an ordinary deployment (`customers/demo.json`, a fictional
-"Riverside Sports Club") with one extra step: sample content.
+A demo is an ordinary deployment with one extra step: sample content. There
+are two, each a fictional committee described in `scripts/demo-scenarios/`:
+
+| Demo | Customer file | Scenario |
+|---|---|---|
+| Riverside Sports Club | `customers/demo.json` | `sports-club` (the default) |
+| Thornwick Village Hall | `customers/villagehall.json` | `village-hall` |
 
 ```bash
 node --env-file=customers/demo.env scripts/seed-demo.mjs --reset
+node --env-file=customers/villagehall.env scripts/seed-demo.mjs --scenario village-hall --reset
 ```
 
-This fills it with ten fictional members, three groups, conversations,
+This fills the demo with fictional members, three groups, conversations,
 motions, tasks, meetings and documents. Run it again after a pitch to wipe
 whatever was clicked and put the demo back as it was; your own sign-in is
 kept. **Never run it against a real committee's project** — `--reset`
 deletes every group and everything in them.
+
+To add another kind of committee, copy a scenario file, rewrite its content,
+and give it a customer JSON whose roles and skill areas match.
 
 ## Shipping an update to every committee
 
