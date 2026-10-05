@@ -140,7 +140,8 @@ create table public.notifications (
   kind text not null check (kind in ('decision_resolved', 'decision_reminder', 'task_reminder', 'task_overdue')),
   title text not null,
   body text,
-  decision_id uuid references public.decisions(id) on delete cascade,
+  -- references decisions(id); added below, once that table exists
+  decision_id uuid,
   created_at timestamptz not null default now(),
   read_at timestamptz
 );
@@ -236,6 +237,8 @@ alter table public.tasks add column meeting_id uuid references public.meetings(i
 
 -- Same reasoning: notifications is defined above tasks.
 alter table public.notifications add column task_id uuid references public.tasks(id) on delete cascade;
+alter table public.notifications add constraint notifications_decision_id_fkey
+  foreign key (decision_id) references public.decisions(id) on delete cascade;
 
 -- A pointer to a file already stored in Google Drive -- deliberately never
 -- the file itself. Supabase's free-tier storage would hold committee
