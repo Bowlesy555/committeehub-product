@@ -9,7 +9,7 @@
 // (default: sports-club); this file only knows how to load one. Switching
 // scenario also swaps the roles, the skill areas, and the logo and icons
 // (from <name>.svg beside it). The app's name and colour are deployment
-// settings and don't change -- see docs/RUNBOOK.md.
+// settings and don't change, so the demo is deployed with neutral ones.
 //
 // --reset wipes every group (and with it every room, message, decision,
 // task, meeting and document), the library, and every fictional member this

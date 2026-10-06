@@ -7,10 +7,6 @@ export default {
   slug: "riverside",
   secretary: "Priya", // records meetings and raises tasks
 
-  // Deployment settings that suit this scenario (see docs/RUNBOOK.md).
-  appName: "Riverside CommitteeHub",
-  accent: "1F5FA8",
-
   roles: ["Chairperson", "Vice Chair", "Secretary", "Treasurer", "Committee Member", "Welfare Officer", "Fixtures Secretary"],
   skillAreas: ["Governance & Rules", "Finance & Admin", "Events", "Communications & Media", "Membership", "Fundraising & Sponsorship", "Welfare & Conduct", "IT & Digital"],
 

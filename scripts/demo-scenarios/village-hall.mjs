@@ -8,10 +8,6 @@ export default {
   slug: "thornwick",
   secretary: "Janet", // records meetings and raises tasks
 
-  // Deployment settings that suit this scenario (see docs/RUNBOOK.md).
-  appName: "Thornwick Hall CommitteeHub",
-  accent: "8A4A2B",
-
   roles: ["Chairperson", "Vice Chair", "Secretary", "Treasurer", "Trustee", "Bookings Secretary", "Caretaker Liaison", "User Group Representative"],
   skillAreas: ["Governance & Trusteeship", "Finance & Admin", "Bookings & Lettings", "Building & Maintenance", "Health & Safety", "Fundraising & Grants", "Events", "Communications"],
 

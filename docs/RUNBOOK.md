@@ -153,16 +153,9 @@ before a pitch to pick the committee, and after one to undo whatever was
 clicked; your own sign-in is kept. **Never point it at a real committee's
 project** — it deletes every group and everything in them.
 
-What does **not** switch is the app's name and colour, because those are
-deployment settings. To change them, edit these in the demo's Vercel
-project (Settings → Environment Variables) and redeploy:
-
-| Setting | Sports club | Village hall |
-|---|---|---|
-| `NEXT_PUBLIC_ORG_NAME` | Riverside Sports Club | Thornwick Village Hall |
-| `NEXT_PUBLIC_APP_NAME` | Riverside CommitteeHub | Thornwick Hall CommitteeHub |
-| `NEXT_PUBLIC_APP_SHORT_NAME` | Riverside | Thornwick |
-| `NEXT_PUBLIC_BRAND_ACCENT` | 1F5FA8 | 8A4A2B |
+The app's name and colour are deployment settings and do not switch, so
+the demo is deployed with neutral ones: named "CommitteeHub Demo", in the
+default colour.
 
 To add another kind of committee, copy a scenario file and its `.svg` logo,
 rewrite the content, and add a line to `package.json`.
