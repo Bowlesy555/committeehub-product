@@ -148,8 +148,7 @@ Off unless switched on for that committee.
 ## The sales demos
 
 There are two public demos, each an ordinary deployment with sample content
-and a guest sign-in. They live in a separate Supabase account from
-customers.
+and a guest sign-in, in the same paid Supabase organisation as customers.
 
 | Demo | Address | Files in `customers/` | Reset command |
 |---|---|---|---|
@@ -171,8 +170,7 @@ project** — it deletes every group and everything in them.
 **Nightly reset.** A scheduled job (`.github/workflows/reset-demo.yml`)
 resets both demos every night at 02:00 UTC, and can be run by hand from the
 repository's **Actions** tab on GitHub. It needs four repository secrets,
-named in that file. The nightly activity also stops Supabase pausing the
-free projects for being idle.
+named in that file.
 
 To add another kind of committee, copy a scenario file and its `.svg` logo,
 rewrite the content, and add a line to `package.json` and to the nightly job.
