@@ -1,31 +1,33 @@
-# Puts the public sales demo back to its starting state every night, so one
-# visitor's clicking about is never the next visitor's first impression.
-# Can also be run by hand from the Actions tab, optionally switching which
-# fictional committee is loaded.
+# Puts the two public sales demos back to their starting state every night,
+# so one visitor's clicking about is never the next visitor's first
+# impression. Can also be run by hand from the Actions tab.
 #
-# Needs two repository secrets (Settings > Secrets and variables > Actions):
-#   DEMO_SUPABASE_URL          the demo project's URL
-#   DEMO_SUPABASE_SECRET_KEY   the demo project's secret (service role) key
-# Only ever point these at the demo project: the job deletes every group.
+# Needs four repository secrets (Settings > Secrets and variables > Actions):
+#   SPORTS_SUPABASE_URL        SPORTS_SUPABASE_SECRET_KEY
+#   VILLAGEHALL_SUPABASE_URL   VILLAGEHALL_SUPABASE_SECRET_KEY
+# Only ever point these at the demo projects: the job deletes every group.
 
-name: Reset the demo
+name: Reset the demos
 
 on:
   schedule:
     # 02:00 UTC. That is 2am UK time in winter and 3am in summer.
     - cron: "0 2 * * *"
   workflow_dispatch:
-    inputs:
-      scenario:
-        description: Which committee to load
-        type: choice
-        default: current
-        options: [current, sports-club, village-hall]
 
 jobs:
   reset:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - demo: sports
+            scenario: sports-club
+          - demo: villagehall
+            scenario: village-hall
+    name: Reset ${{ matrix.demo }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,10 +35,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: node scripts/seed-demo.mjs --scenario "${{ inputs.scenario || 'current' }}" --reset
+      - run: node scripts/seed-demo.mjs --scenario "${{ matrix.scenario }}" --reset
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.DEMO_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DEMO_SUPABASE_SECRET_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ matrix.demo == 'sports' && secrets.SPORTS_SUPABASE_URL || secrets.VILLAGEHALL_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ matrix.demo == 'sports' && secrets.SPORTS_SUPABASE_SECRET_KEY || secrets.VILLAGEHALL_SUPABASE_SECRET_KEY }}
           # The guest sign-in is published on the website, so not a secret.
           DEMO_GUEST_EMAIL: guest@committeehub.co.uk
           DEMO_GUEST_PIN: "246810"

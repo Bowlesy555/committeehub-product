@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "demo:sports": "node --env-file=customers/demo.env scripts/seed-demo.mjs --scenario sports-club --reset",
-    "demo:village-hall": "node --env-file=customers/demo.env scripts/seed-demo.mjs --scenario village-hall --reset"
+    "demo:sports": "node --env-file=customers/sports.env scripts/seed-demo.mjs --scenario sports-club --reset",
+    "demo:village-hall": "node --env-file=customers/villagehall.env scripts/seed-demo.mjs --scenario village-hall --reset"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

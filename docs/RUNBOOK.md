@@ -145,41 +145,37 @@ Off unless switched on for that committee.
   wording as `"minutesImportProfile"` in the JSON (the shape is
   `ImportProfile` in `src/lib/action-items.ts`). No code changes.
 
-## The sales demo
+## The sales demos
 
-The demo is an ordinary deployment (`customers/demo.json`) with one extra
-step: sample content. It can show different kinds of committee, each a
-fictional one described in `scripts/demo-scenarios/`:
+There are two public demos, each an ordinary deployment with sample content
+and a guest sign-in. They live in a separate Supabase account from
+customers.
 
-| Command | Committee |
-|---|---|
-| `npm run demo:sports` | Riverside Sports Club |
-| `npm run demo:village-hall` | Thornwick Village Hall |
+| Demo | Address | Files in `customers/` | Reset command |
+|---|---|---|---|
+| Riverside Sports Club | `sports.committeehub.co.uk` | `sports.json`, `sports.env` | `npm run demo:sports` |
+| Thornwick Village Hall | `villagehall.committeehub.co.uk` | `villagehall.json`, `villagehall.env` | `npm run demo:village-hall` |
 
-Either command wipes the demo and rebuilds it as that committee: members,
-roles, skill areas, three groups, conversations, motions, tasks, meetings,
-documents, and the logo and app icons. It takes about a minute. Run it
-before a pitch to pick the committee, and after one to undo whatever was
-clicked; your own sign-in is kept. **Never point it at a real committee's
+Setting one up follows steps 1 to 6 above like any customer, with two
+differences: skip the icons step (the reset command uploads the demo's logo
+and icons itself), and after step 3 run its reset command to load the
+content. Each demo's fictional committee is described in
+`scripts/demo-scenarios/`.
+
+A reset wipes the demo and rebuilds it: members, roles, skill areas, three
+groups, conversations, motions, tasks, meetings, documents, the logo and the
+guest sign-in (`DEMO_GUEST_EMAIL` and `DEMO_GUEST_PIN` in its `.env` file).
+Your own sign-in is kept. **Never point a reset at a real committee's
 project** — it deletes every group and everything in them.
 
-The app's name and colour are deployment settings and do not switch, so
-the demo is deployed with neutral ones: named "CommitteeHub Demo", in the
-default colour.
-
-**Nightly reset.** A scheduled job (`.github/workflows/reset-demo.yml`) rebuilds
-the demo every night at 02:00 UTC, keeping whichever committee is loaded. It
-can also be run by hand from the repository's **Actions** tab on GitHub
-("Reset the demo" → Run workflow), choosing the committee to load, which is
-handy from a phone. It needs two repository secrets, `DEMO_SUPABASE_URL` and
-`DEMO_SUPABASE_SECRET_KEY`.
-
-**Guest sign-in.** With `DEMO_GUEST_EMAIL` and `DEMO_GUEST_PIN` set, every
-rebuild keeps a public guest account in each group as an ordinary member and
-puts its PIN back.
+**Nightly reset.** A scheduled job (`.github/workflows/reset-demo.yml`)
+resets both demos every night at 02:00 UTC, and can be run by hand from the
+repository's **Actions** tab on GitHub. It needs four repository secrets,
+named in that file. The nightly activity also stops Supabase pausing the
+free projects for being idle.
 
 To add another kind of committee, copy a scenario file and its `.svg` logo,
-rewrite the content, and add a line to `package.json`.
+rewrite the content, and add a line to `package.json` and to the nightly job.
 
 ## Shipping an update to every committee
 
