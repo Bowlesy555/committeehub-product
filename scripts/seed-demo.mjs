@@ -15,6 +15,8 @@
 // task, meeting and document), the library, and every fictional member this
 // script made before, then builds it all again -- so run it after a pitch to
 // put the demo back to its starting state. Real accounts (yours) are kept.
+// With DEMO_GUEST_EMAIL and DEMO_GUEST_PIN in the env file, it also keeps a
+// public guest sign-in in every group, as an ordinary member.
 //
 // NEVER point this at a real committee's project.
 
@@ -139,9 +141,38 @@ for (const [name, roleLabels, capacity, skills] of scenario.people) {
   if (memberSkills.length) await run(`Rating ${first}'s skills`, db.from("member_skills").insert(memberSkills));
 }
 
-// Real accounts (the person giving the demo) join everything too.
+// A guest sign-in for prospects to try the demo themselves, if
+// DEMO_GUEST_EMAIL and DEMO_GUEST_PIN are set. Its PIN is public, so it is an
+// ordinary member, never an admin, and every run puts its name and PIN back
+// in case a visitor changed them.
+const guestEmail = (process.env.DEMO_GUEST_EMAIL ?? "").trim().toLowerCase();
+const guestPin = (process.env.DEMO_GUEST_PIN ?? "").trim();
+let guestId = null;
+if (guestEmail && /^\d{6}$/.test(guestPin)) {
+  const existing = await run("Finding the guest", db.from("profiles").select("id").eq("email", guestEmail).maybeSingle());
+  if (existing) {
+    guestId = existing.id;
+    const { error } = await db.auth.admin.updateUserById(guestId, { password: guestPin });
+    if (error) console.warn(`Could not reset the guest PIN: ${error.message}`);
+  } else {
+    const { data, error } = await db.auth.admin.createUser({
+      email: guestEmail, password: guestPin, email_confirm: true, user_metadata: { name: "Guest Visitor" },
+    });
+    if (error) {
+      console.error(`Creating the guest failed: ${error.message}`);
+      process.exit(1);
+    }
+    guestId = data.user.id;
+  }
+  await run(
+    "Resetting the guest profile",
+    db.from("profiles").update({ name: "Guest Visitor", is_global_admin: false, capacity: "available" }).eq("id", guestId)
+  );
+}
+
+// Real accounts (the person giving the demo) join everything too, as admins.
 const real = await run("Reading real accounts", db.from("profiles").select("id").not("email", "like", `%${DEMO_DOMAIN}`));
-const realIds = real.map((p) => p.id);
+const realIds = real.map((p) => p.id).filter((id) => id !== guestId);
 
 // ---- groups ------------------------------------------------------------
 
@@ -153,7 +184,7 @@ for (const g of scenario.groups) {
   );
   groups[g.key] = row.id;
   const firstNames = g.members === "everyone" ? Object.keys(m) : g.members;
-  const memberIds = [...new Set([...firstNames.map(who), ...realIds])];
+  const memberIds = [...new Set([...firstNames.map(who), ...realIds, ...(guestId ? [guestId] : [])])];
   await run(
     `Adding members to ${g.name}`,
     db.from("group_members").insert(
