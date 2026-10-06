@@ -1,0 +1,42 @@
+# Puts the public sales demo back to its starting state every night, so one
+# visitor's clicking about is never the next visitor's first impression.
+# Can also be run by hand from the Actions tab, optionally switching which
+# fictional committee is loaded.
+#
+# Needs two repository secrets (Settings > Secrets and variables > Actions):
+#   DEMO_SUPABASE_URL          the demo project's URL
+#   DEMO_SUPABASE_SECRET_KEY   the demo project's secret (service role) key
+# Only ever point these at the demo project: the job deletes every group.
+
+name: Reset the demo
+
+on:
+  schedule:
+    # 02:00 UTC. That is 2am UK time in winter and 3am in summer.
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: Which committee to load
+        type: choice
+        default: current
+        options: [current, sports-club, village-hall]
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/seed-demo.mjs --scenario "${{ inputs.scenario || 'current' }}" --reset
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.DEMO_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DEMO_SUPABASE_SECRET_KEY }}
+          # The guest sign-in is published on the website, so not a secret.
+          DEMO_GUEST_EMAIL: guest@committeehub.co.uk
+          DEMO_GUEST_PIN: "246810"

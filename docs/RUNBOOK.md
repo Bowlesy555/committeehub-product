@@ -167,6 +167,17 @@ The app's name and colour are deployment settings and do not switch, so
 the demo is deployed with neutral ones: named "CommitteeHub Demo", in the
 default colour.
 
+**Nightly reset.** A scheduled job (`.github/workflows/reset-demo.yml`) rebuilds
+the demo every night at 02:00 UTC, keeping whichever committee is loaded. It
+can also be run by hand from the repository's **Actions** tab on GitHub
+("Reset the demo" → Run workflow), choosing the committee to load, which is
+handy from a phone. It needs two repository secrets, `DEMO_SUPABASE_URL` and
+`DEMO_SUPABASE_SECRET_KEY`.
+
+**Guest sign-in.** With `DEMO_GUEST_EMAIL` and `DEMO_GUEST_PIN` set, every
+rebuild keeps a public guest account in each group as an ordinary member and
+puts its PIN back.
+
 To add another kind of committee, copy a scenario file and its `.svg` logo,
 rewrite the content, and add a line to `package.json`.
 

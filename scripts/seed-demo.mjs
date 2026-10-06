@@ -5,6 +5,8 @@
 //   node --env-file=customers/demo.env scripts/seed-demo.mjs --reset
 //   node --env-file=customers/demo.env scripts/seed-demo.mjs --scenario village-hall --reset
 //
+//   node --env-file=customers/demo.env scripts/seed-demo.mjs --scenario current --reset
+//
 // The committee itself is described in scripts/demo-scenarios/<name>.mjs
 // (default: sports-club); this file only knows how to load one. Switching
 // scenario also swaps the roles, the skill areas, and the logo and icons
@@ -22,7 +24,7 @@
 
 import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -37,7 +39,20 @@ if (!url || !key) {
 const db = createClient(url, key, { auth: { persistSession: false } });
 
 const scenarioFlag = process.argv.indexOf("--scenario");
-const scenarioName = scenarioFlag === -1 ? "sports-club" : process.argv[scenarioFlag + 1];
+let scenarioName = scenarioFlag === -1 ? "sports-club" : process.argv[scenarioFlag + 1];
+
+// "--scenario current" rebuilds whichever committee is loaded now, worked out
+// from the address ending of the fictional members already there. Used by the
+// nightly reset, so it never undoes a switch made for the next day's pitch.
+if (scenarioName === "current") {
+  scenarioName = "sports-club";
+  const { data: sample } = await db.from("profiles").select("email").like("email", "%-demo.example").limit(1);
+  const loadedSlug = sample?.[0]?.email.match(/@(.+)-demo\.example$/)?.[1];
+  const dir = new URL("./demo-scenarios/", import.meta.url);
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".mjs"))) {
+    if ((await import(new URL(file, dir))).default.slug === loadedSlug) scenarioName = file.replace(/\.mjs$/, "");
+  }
+}
 let scenario;
 try {
   scenario = (await import(`./demo-scenarios/${scenarioName}.mjs`)).default;
