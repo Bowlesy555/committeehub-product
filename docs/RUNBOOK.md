@@ -20,7 +20,8 @@ into this repository.
 - Their list of committee roles and skill areas, if the defaults in
   `supabase/seed.sql` don't suit.
 - Whether they want reminder **emails** (step 7) or in-app notifications only.
-- Whether they want their own web address (step 6), and who manages its DNS.
+- Their web address: `<name>.committeehub.co.uk` (the default), or their own
+  domain, in which case who manages its DNS (step 6).
 
 Copy `customer.example.json` to `customers/<name>.json` and fill it in.
 
@@ -87,14 +88,23 @@ In Supabase, **Authentication → URL Configuration**:
 
 Repeat this whenever the address changes (step 6).
 
-## 6. Their own web address (optional)
+## 6. Their web address
 
-1. In the Vercel project, **Settings → Domains → Add**, and enter the
-   address, e.g. `committee.theirclub.org`.
-2. Vercel shows one DNS record to create. Send it to whoever manages the
-   committee's domain. A subdomain needs a single CNAME record and is the
-   easy case; a bare domain (`theirclub.org`) needs an A record instead.
-3. Once Vercel shows the domain as valid, redo step 5 with the new address.
+**Standard: a subdomain of committeehub.co.uk.** In the Vercel project,
+**Settings → Domains → Add**, and enter `<name>.committeehub.co.uk`. Nothing
+else is needed: a wildcard DNS record at Hostinger (`*` → `cname.vercel-dns.com`)
+already sends every such address to Vercel. Vercel may show an orange "DNS
+Change Recommended" badge suggesting a project-specific record; ignore it,
+the wildcard keeps working. Keep `www`, `demo`, `notify`, `app`, `mail` and
+`support` for your own use.
+
+**Or their own domain.** Add it the same way, e.g. `committee.theirclub.org`.
+Vercel shows one DNS record to create; send it to whoever manages the
+committee's domain. A subdomain needs a single CNAME record and is the easy
+case; a bare domain (`theirclub.org`) needs an A record instead.
+
+Either way: once Vercel shows the domain as valid, redo step 5 with the new
+address, and set the project's `.vercel.app` address to redirect to it.
 
 ## 7. Reminder emails (optional)
 
