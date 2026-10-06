@@ -1,6 +1,5 @@
 // "Thornwick Village Hall" -- the non-sporting demo: a charity's management
-// committee of trustees running a hall. Goes with customers/villagehall.json,
-// whose roles and skill areas the labels below must match.
+// committee of trustees running a hall.
 //
 // People are referred to by first name everywhere. Days are relative to
 // today: negative is in the past.
@@ -8,6 +7,13 @@
 export default {
   slug: "thornwick",
   secretary: "Janet", // records meetings and raises tasks
+
+  // Deployment settings that suit this scenario (see docs/RUNBOOK.md).
+  appName: "Thornwick Hall CommitteeHub",
+  accent: "8A4A2B",
+
+  roles: ["Chairperson", "Vice Chair", "Secretary", "Treasurer", "Trustee", "Bookings Secretary", "Caretaker Liaison", "User Group Representative"],
+  skillAreas: ["Governance & Trusteeship", "Finance & Admin", "Bookings & Lettings", "Building & Maintenance", "Health & Safety", "Fundraising & Grants", "Events", "Communications"],
 
   // name, roles, capacity, skills as [skill area, level 1-3]
   people: [

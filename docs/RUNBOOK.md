@@ -135,29 +135,37 @@ Off unless switched on for that committee.
   wording as `"minutesImportProfile"` in the JSON (the shape is
   `ImportProfile` in `src/lib/action-items.ts`). No code changes.
 
-## The sales demos
+## The sales demo
 
-A demo is an ordinary deployment with one extra step: sample content. There
-are two, each a fictional committee described in `scripts/demo-scenarios/`:
+The demo is an ordinary deployment (`customers/demo.json`) with one extra
+step: sample content. It can show different kinds of committee, each a
+fictional one described in `scripts/demo-scenarios/`:
 
-| Demo | Customer file | Scenario |
+| Command | Committee |
+|---|---|
+| `npm run demo:sports` | Riverside Sports Club |
+| `npm run demo:village-hall` | Thornwick Village Hall |
+
+Either command wipes the demo and rebuilds it as that committee: members,
+roles, skill areas, three groups, conversations, motions, tasks, meetings,
+documents, and the logo and app icons. It takes about a minute. Run it
+before a pitch to pick the committee, and after one to undo whatever was
+clicked; your own sign-in is kept. **Never point it at a real committee's
+project** — it deletes every group and everything in them.
+
+What does **not** switch is the app's name and colour, because those are
+deployment settings. To change them, edit these in the demo's Vercel
+project (Settings → Environment Variables) and redeploy:
+
+| Setting | Sports club | Village hall |
 |---|---|---|
-| Riverside Sports Club | `customers/demo.json` | `sports-club` (the default) |
-| Thornwick Village Hall | `customers/villagehall.json` | `village-hall` |
+| `NEXT_PUBLIC_ORG_NAME` | Riverside Sports Club | Thornwick Village Hall |
+| `NEXT_PUBLIC_APP_NAME` | Riverside CommitteeHub | Thornwick Hall CommitteeHub |
+| `NEXT_PUBLIC_APP_SHORT_NAME` | Riverside | Thornwick |
+| `NEXT_PUBLIC_BRAND_ACCENT` | 1F5FA8 | 8A4A2B |
 
-```bash
-node --env-file=customers/demo.env scripts/seed-demo.mjs --reset
-node --env-file=customers/villagehall.env scripts/seed-demo.mjs --scenario village-hall --reset
-```
-
-This fills the demo with fictional members, three groups, conversations,
-motions, tasks, meetings and documents. Run it again after a pitch to wipe
-whatever was clicked and put the demo back as it was; your own sign-in is
-kept. **Never run it against a real committee's project** — `--reset`
-deletes every group and everything in them.
-
-To add another kind of committee, copy a scenario file, rewrite its content,
-and give it a customer JSON whose roles and skill areas match.
+To add another kind of committee, copy a scenario file and its `.svg` logo,
+rewrite the content, and add a line to `package.json`.
 
 ## Shipping an update to every committee
 

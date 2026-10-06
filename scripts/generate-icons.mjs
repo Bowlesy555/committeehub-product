@@ -11,6 +11,8 @@
 //                        icons, which must be opaque (default: #FFFFFF)
 //   --upload             upload to Supabase Storage; needs
 //                        NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
+//   --cache <seconds>    how long browsers may keep the uploaded files
+//                        (default: a day; the switchable demo uses less)
 
 import { mkdir, readFile, copyFile } from "node:fs/promises";
 import path from "node:path";
@@ -22,7 +24,7 @@ const flag = (name) => {
   const i = args.indexOf(name);
   return i === -1 ? undefined : args[i + 1];
 };
-const source = args.find((a, i) => !a.startsWith("--") && !["--out", "--background"].includes(args[i - 1]));
+const source = args.find((a, i) => !a.startsWith("--") && !["--out", "--background", "--cache"].includes(args[i - 1]));
 if (!source) {
   console.error("Usage: node scripts/generate-icons.mjs <logo.svg|png> [--out dir] [--background #hex] [--upload]");
   process.exit(1);
@@ -30,6 +32,7 @@ if (!source) {
 const outDir = flag("--out") ?? "brand-out";
 const background = flag("--background") ?? "#FFFFFF";
 const upload = args.includes("--upload");
+const cacheSeconds = flag("--cache") ?? "86400";
 const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
 
 // The logo scaled to `fill` of a square canvas and centred on `bg`.
@@ -80,7 +83,7 @@ if (upload) {
       .from("brand")
       .upload(name, await readFile(path.join(outDir, name)), {
         contentType: types[path.extname(name)] ?? "application/octet-stream",
-        cacheControl: "86400",
+        cacheControl: cacheSeconds,
         upsert: true,
       });
     if (error) throw error;

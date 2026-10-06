@@ -3,10 +3,13 @@
 // meetings, documents and skills.
 //
 //   node --env-file=customers/demo.env scripts/seed-demo.mjs --reset
-//   node --env-file=customers/villagehall.env scripts/seed-demo.mjs --scenario village-hall --reset
+//   node --env-file=customers/demo.env scripts/seed-demo.mjs --scenario village-hall --reset
 //
 // The committee itself is described in scripts/demo-scenarios/<name>.mjs
-// (default: sports-club); this file only knows how to load one.
+// (default: sports-club); this file only knows how to load one. Switching
+// scenario also swaps the roles, the skill areas, and the logo and icons
+// (from <name>.svg beside it). The app's name and colour are deployment
+// settings and don't change -- see docs/RUNBOOK.md.
 //
 // --reset wipes every group (and with it every room, message, decision,
 // task, meeting and document), the library, and every fictional member this
@@ -16,6 +19,11 @@
 // NEVER point this at a real committee's project.
 
 import { randomBytes } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -78,10 +86,24 @@ for (const p of oldDemo) {
   if (error) console.warn(`Could not remove an old demo member: ${error.message}`);
 }
 
+// ---- roles and skill areas ---------------------------------------------
+
+// Each kind of committee has its own, so they are replaced wholesale. (Any
+// roles or skill ratings on real accounts go with them.)
+const slug = (label) => label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+await run("Clearing roles", db.from("roles").delete().not("id", "is", null));
+await run("Clearing skill areas", db.from("skill_areas").delete().not("id", "is", null));
+const roles = await run(
+  "Adding roles",
+  db.from("roles").insert(scenario.roles.map((label, i) => ({ label, sort_order: i + 1 }))).select("id,label")
+);
+const skillAreas = await run(
+  "Adding skill areas",
+  db.from("skill_areas").insert(scenario.skillAreas.map((label, i) => ({ id: slug(label), label, sort_order: i + 1 }))).select("id,label")
+);
+
 // ---- members -----------------------------------------------------------
 
-const roles = await run("Reading roles", db.from("roles").select("id,label"));
-const skillAreas = await run("Reading skill areas", db.from("skill_areas").select("id,label"));
 const roleId = (label) => roles.find((r) => r.label === label)?.id;
 const skillId = (label) => skillAreas.find((s) => s.label === label)?.id;
 
@@ -284,3 +306,18 @@ console.log(
     `${scenario.decisions.length} motions, ${scenario.meetings.length} meetings, ${scenario.tasks.length} tasks, ` +
     `${scenario.documents.length} documents, ${scenario.library.length} library items.`
 );
+
+// ---- logo and icons ----------------------------------------------------
+
+// Uploaded over the previous scenario's files, so the deployment's existing
+// logo and icon addresses now show this committee's.
+const here = path.dirname(fileURLToPath(import.meta.url));
+const logo = path.join(here, "demo-scenarios", `${scenarioName}.svg`);
+if (existsSync(logo)) {
+  execFileSync(
+    process.execPath,
+    [path.join(here, "generate-icons.mjs"), logo, "--out", path.join(tmpdir(), `committeehub-demo-${scenarioName}`), "--upload", "--cache", "60"],
+    { stdio: ["ignore", "ignore", "inherit"] }
+  );
+  console.log("Logo and icons swapped. A browser that has the old ones may need a refresh to show the new.");
+}

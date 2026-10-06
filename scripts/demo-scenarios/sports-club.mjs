@@ -1,5 +1,4 @@
-// "Riverside Sports Club" -- the sports demo. Goes with customers/demo.json,
-// whose roles and skill areas the labels below must match.
+// "Riverside Sports Club" -- the sports demo.
 //
 // People are referred to by first name everywhere. Days are relative to
 // today: negative is in the past.
@@ -7,6 +6,13 @@
 export default {
   slug: "riverside",
   secretary: "Priya", // records meetings and raises tasks
+
+  // Deployment settings that suit this scenario (see docs/RUNBOOK.md).
+  appName: "Riverside CommitteeHub",
+  accent: "1F5FA8",
+
+  roles: ["Chairperson", "Vice Chair", "Secretary", "Treasurer", "Committee Member", "Welfare Officer", "Fixtures Secretary"],
+  skillAreas: ["Governance & Rules", "Finance & Admin", "Events", "Communications & Media", "Membership", "Fundraising & Sponsorship", "Welfare & Conduct", "IT & Digital"],
 
   // name, roles, capacity, skills as [skill area, level 1-3]
   people: [
