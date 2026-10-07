@@ -113,7 +113,8 @@ const lines = [
   ["NEXT_PUBLIC_BRAND_ACCENT", b.accent?.replace(/^#/, "")],
   ["NEXT_PUBLIC_BRAND_ACCENT_DARK", b.accentDark?.replace(/^#/, "")],
   ["NEXT_PUBLIC_BRAND_LOGO_BADGE", b.logoBadge ? "true" : undefined],
-  ["NEXT_PUBLIC_FEATURE_MINUTES_IMPORT", f.minutesImport ? "true" : undefined],
+  // On by default; only printed when a committee wants it switched off.
+  ["NEXT_PUBLIC_FEATURE_MINUTES_IMPORT", f.minutesImport === false ? "false" : undefined],
   ["NEXT_PUBLIC_MINUTES_IMPORT_PROFILE", f.minutesImportProfile ? JSON.stringify(f.minutesImportProfile) : undefined],
   ["NEXT_PUBLIC_FEATURE_EMAIL_LINK", f.emailLinkSignIn ? "true" : undefined],
 ];

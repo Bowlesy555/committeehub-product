@@ -59,6 +59,10 @@ function loadProfile(): ImportProfile {
 }
 
 const PROFILE = loadProfile();
+
+/** False until this deployment has a profile matched to the committee's own
+ *  minutes, so the import can say it is still on the standard layout. */
+export const importIsCalibrated = !!process.env.NEXT_PUBLIC_MINUTES_IMPORT_PROFILE;
 const HEADER_ALIASES = PROFILE.headerAliases;
 const POSITIONAL_COLUMNS = PROFILE.positionalColumns;
 
@@ -70,6 +74,29 @@ function splitRow(line: string): string[] {
   if (line.includes("\t")) return line.split("\t");
   if (/ {2,}/.test(line)) return line.split(/ {2,}/);
   return [line];
+}
+
+// One line of a .csv file: commas separate cells, except inside "quotes".
+function splitCsvRow(line: string): string[] {
+  const cells: string[] = [];
+  let cell = "";
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (quoted) {
+      if (ch === '"' && line[i + 1] === '"') {
+        cell += '"';
+        i++;
+      } else if (ch === '"') quoted = false;
+      else cell += ch;
+    } else if (ch === '"') quoted = true;
+    else if (ch === ",") {
+      cells.push(cell);
+      cell = "";
+    } else cell += ch;
+  }
+  cells.push(cell);
+  return cells;
 }
 
 function detectHeader(cells: string[]): Record<string, number> | null {
@@ -127,7 +154,12 @@ export function parseActionItems(text: string): ParsedActionItem[] {
     .filter((l) => l.trim());
   if (!lines.length) return [];
 
-  let rows = lines.map(splitRow);
+  // Text pasted from a spreadsheet is tab-separated. The text of a .csv file
+  // (the downloadable example, opened in a text editor) is comma-separated;
+  // it's only treated that way when its first line is a recognisable header,
+  // so a pasted list of sentences with commas in them isn't cut up.
+  const isCsv = !lines.some((l) => l.includes("\t")) && detectHeader(splitCsvRow(lines[0])) !== null;
+  let rows = lines.map(isCsv ? splitCsvRow : splitRow);
   let colMap = detectHeader(rows[0]);
   if (colMap) {
     rows = rows.slice(1);

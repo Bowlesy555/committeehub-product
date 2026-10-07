@@ -134,16 +134,20 @@ Sign in as the first admin with the email and PIN from the JSON, change the
 PIN (🔑 in the topbar), create the main committee group from the Admin tab,
 and add the members.
 
-## Optional features
+## Minutes import
 
-Off unless switched on for that committee.
+Calendar → Import action items is on for every committee, free, using a
+standard action-table layout. Until it has been matched to a committee's own
+minutes, the import shows a note saying so, with an example file to try it.
 
-- **Minutes import** (Calendar → Import action items). Included free.
-  `"minutesImport": true` in the JSON. It is calibrated against the
-  committee's real action-log template, not a generic one: get their
-  template, then record its column names, column order and status/priority
-  wording as `"minutesImportProfile"` in the JSON (the shape is
-  `ImportProfile` in `src/lib/action-items.ts`). No code changes.
+To match it to a committee: get the action table from their real minutes,
+then record its column names, column order and status and priority wording
+as `"minutesImportProfile"` under `"features"` in their JSON (the shape is
+`ImportProfile` in `src/lib/action-items.ts`). Re-run the setup command, add
+the `NEXT_PUBLIC_MINUTES_IMPORT_PROFILE` line it prints to their Vercel
+settings, and redeploy. The note disappears. No code changes.
+
+To switch the feature off for a committee, set `"minutesImport": false`.
 
 ## The sales demos
 

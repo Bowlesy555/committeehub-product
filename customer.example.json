@@ -14,7 +14,6 @@
   "roles": ["Chairperson", "Vice Chair", "Secretary", "Treasurer", "Committee Member"],
   "skillAreas": ["Governance & Rules", "Finance & Admin", "Events", "Communications & Media"],
   "features": {
-    "minutesImport": false,
     "emailLinkSignIn": false
   }
 }

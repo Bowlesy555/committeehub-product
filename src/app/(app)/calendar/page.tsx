@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAppData } from "@/lib/data-store";
 import { useToast } from "@/lib/toast";
 import { fmtDate, fmtDateTime, toLocalInput } from "@/lib/format";
-import { matchMember, parseActionItems } from "@/lib/action-items";
+import { importIsCalibrated, matchMember, parseActionItems } from "@/lib/action-items";
 import { Modal } from "@/components/Modal";
 import { features } from "@/lib/brand";
 import type { Meeting } from "@/types";
@@ -513,6 +513,20 @@ export default function CalendarPage() {
               </select>
             </div>
           </div>
+          {!importIsCalibrated && (
+            <div className="banner info" style={{ marginBottom: 12 }}>
+              <span>
+                This is set up for a standard action table. Every committee lays its minutes out
+                differently, so it will be matched to yours once you&apos;ve sent us your minutes
+                format. To try it now,{" "}
+                <a href="/action-items-example.csv" download>
+                  download the example file
+                </a>
+                , open it in Excel, put in your own details, then copy the rows and paste them
+                below. Use your members&apos; names as owners so they are matched.
+              </span>
+            </div>
+          )}
           <div className="field">
             <label>Paste the action items table from your minutes</label>
             <textarea

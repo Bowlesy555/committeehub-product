@@ -52,9 +52,10 @@ export const brand = {
 
 // Optional parts of the app, off unless a deployment turns them on.
 export const features = {
-  // Calendar > Import action items. Calibrated per committee against their
-  // own minutes template (see NEXT_PUBLIC_MINUTES_IMPORT_PROFILE).
-  minutesImport: clean(process.env.NEXT_PUBLIC_FEATURE_MINUTES_IMPORT) === "true",
+  // Calendar > Import action items. On for everyone with the standard
+  // layout; "false" turns it off. Calibrated per committee against their own
+  // minutes template with NEXT_PUBLIC_MINUTES_IMPORT_PROFILE.
+  minutesImport: clean(process.env.NEXT_PUBLIC_FEATURE_MINUTES_IMPORT) !== "false",
   // The "Email link" tab on the sign-in page. Only worth showing once the
   // Supabase project has a real SMTP sender set up.
   emailLinkSignIn: clean(process.env.NEXT_PUBLIC_FEATURE_EMAIL_LINK) === "true",
