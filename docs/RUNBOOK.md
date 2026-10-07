@@ -134,11 +134,11 @@ Sign in as the first admin with the email and PIN from the JSON, change the
 PIN (🔑 in the topbar), create the main committee group from the Admin tab,
 and add the members.
 
-## Paid add-ons
+## Optional features
 
 Off unless switched on for that committee.
 
-- **Minutes import** (Calendar → Import action items).
+- **Minutes import** (Calendar → Import action items). Included free.
   `"minutesImport": true` in the JSON. It is calibrated against the
   committee's real action-log template, not a generic one: get their
   template, then record its column names, column order and status/priority
