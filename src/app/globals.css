@@ -64,6 +64,8 @@ button{ font-family:inherit; }
    button reachable. */
 @media (max-width:480px){
   .brand .sub{ display:none; }
+  .brand .mark{ font-size:17px; white-space:normal; line-height:1.15; }
+  .brand-logo{ height:38px; }
   .who .meta{ display:none; }
 }
 .avatar{
