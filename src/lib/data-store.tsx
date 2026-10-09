@@ -31,6 +31,7 @@ import type {
   SkillArea,
   Space,
   SpaceParticipant,
+  SpaceOwner,
   SpaceRead,
   SpaceTopic,
   LibraryItem,
@@ -169,6 +170,7 @@ interface AppDataValue {
   groupMembers: Record<string, GroupMember>;
   spaces: Record<string, Space>;
   spaceParticipants: Record<string, SpaceParticipant>;
+  spaceOwners: Record<string, SpaceOwner>;
   spaceTopics: Record<string, SpaceTopic>;
   decisions: Record<string, Decision>;
   votes: Record<string, Vote>;
@@ -192,9 +194,12 @@ interface AppDataValue {
   myGroupIds: string[];
   isGroupAdmin: (groupId: string | null) => boolean;
   amAnyGroupAdmin: boolean;
+  /** In a committee group (or a global admin): may start groups of their own. */
+  isCommitteeMember: boolean;
   unreadSpaceIds: Set<string>;
   unreadDecisionNotificationCount: number;
   unreadTaskNotificationCount: number;
+  unreadRoomNotificationCount: number;
   markSpaceRead: (spaceId: string) => Promise<void>;
   markNotificationsRead: (kinds: AppNotification["kind"][]) => Promise<void>;
 }
@@ -242,6 +247,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const spaceParticipants = useRealtimeByCompositeKey<SpaceParticipant>(
     supabase,
     "space_participants",
+    (r) => `${r.space_id}:${r.member_id}`
+  );
+  const spaceOwners = useRealtimeByCompositeKey<SpaceOwner>(
+    supabase,
+    "space_owners",
     (r) => `${r.space_id}:${r.member_id}`
   );
   const spaceTopics = useRealtimeById<SpaceTopic>(supabase, "space_topics");
@@ -327,6 +337,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     );
   }, [userId, me, groupMembers.rows]);
 
+  const isCommitteeMember = useMemo(() => {
+    if (!userId) return false;
+    if (me?.is_global_admin) return true;
+    return Object.values(groupMembers.rows).some(
+      (gm) => gm.member_id === userId && groups.rows[gm.group_id]?.kind === "committee"
+    );
+  }, [userId, me, groupMembers.rows, groups.rows]);
+
   const dataReady =
     profiles.ready &&
     groups.ready &&
@@ -343,6 +361,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     spaceReads.ready &&
     notifications.ready &&
     spaceParticipants.ready &&
+    spaceOwners.ready &&
     spaceTopics.ready &&
     taskAssignees.ready &&
     documents.ready &&
@@ -356,6 +375,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const ids = new Set<string>();
     for (const space of Object.values(spaces.rows)) {
       if (!space.last_message_at) continue;
+      // Your own message never counts as unread: you've plainly seen the room.
+      if (space.last_message_by === userId) continue;
       const read = spaceReads.rows[`${space.id}:${userId}`];
       if (!read || new Date(space.last_message_at) > new Date(read.last_read_at)) {
         ids.add(space.id);
@@ -374,11 +395,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     (n) => !n.read_at && (n.kind === "task_reminder" || n.kind === "task_overdue")
   ).length;
 
+  const unreadRoomNotificationCount = Object.values(notifications.rows).filter(
+    (n) => !n.read_at && n.kind === "room_inactive"
+  ).length;
+
   async function markSpaceRead(spaceId: string) {
     if (!userId) return;
+    // Messages are stamped by the server and this by the device, so if the
+    // device clock runs behind, "now" could be earlier than the latest message
+    // and the room would stay unread. Never mark read earlier than that message.
+    const latest = spaces.rows[spaceId]?.last_message_at;
+    const at = new Date(Math.max(new Date().getTime(), latest ? new Date(latest).getTime() : 0));
     await supabase
       .from("space_reads")
-      .upsert({ space_id: spaceId, member_id: userId, last_read_at: new Date().toISOString() });
+      .upsert({ space_id: spaceId, member_id: userId, last_read_at: at.toISOString() });
   }
 
   async function markNotificationsRead(kinds: AppNotification["kind"][]) {
@@ -400,6 +430,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     groupMembers: groupMembers.rows,
     spaces: spaces.rows,
     spaceParticipants: spaceParticipants.rows,
+    spaceOwners: spaceOwners.rows,
     spaceTopics: spaceTopics.rows,
     decisions: decisions.rows,
     votes: votes.rows,
@@ -422,9 +453,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     myGroupIds,
     isGroupAdmin,
     amAnyGroupAdmin,
+    isCommitteeMember,
     unreadSpaceIds,
     unreadDecisionNotificationCount,
     unreadTaskNotificationCount,
+    unreadRoomNotificationCount,
     markSpaceRead,
     markNotificationsRead,
   };

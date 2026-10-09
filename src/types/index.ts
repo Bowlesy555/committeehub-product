@@ -43,6 +43,8 @@ export interface Group {
   kind: GroupKind;
   description: string | null;
   default_quorum: number;
+  /** A small group made just for one room (see create_room_for_people). */
+  private_room: boolean;
   created_at: string;
 }
 
@@ -69,6 +71,16 @@ export interface Space {
   last_message_by: string | null;
   pinned: boolean;
   pinned_until: string | null;
+  /** When the quiet-room sweep last asked the creator about closing it. */
+  inactivity_prompted_at: string | null;
+  /** When the creator chose to keep it open after being asked. */
+  inactivity_dismissed_at: string | null;
+}
+
+/** A co-owner of a room: can manage it alongside its creator. */
+export interface SpaceOwner {
+  space_id: string;
+  member_id: string;
 }
 
 export interface SpaceParticipant {
@@ -100,6 +112,10 @@ export interface Message {
   text: string;
   created_at: string;
   edited_at: string | null;
+  /** Paths of pictures attached to the message (private storage bucket). */
+  image_paths: string[];
+  /** When the daily clean-up removed this message's pictures, if it did. */
+  images_removed_at: string | null;
 }
 
 export type DecisionStatus = "open" | "passed" | "failed" | "withdrawn";
@@ -233,7 +249,8 @@ export type NotificationKind =
   | "decision_resolved"
   | "decision_reminder"
   | "task_reminder"
-  | "task_overdue";
+  | "task_overdue"
+  | "room_inactive";
 
 export interface AppNotification {
   id: string;
@@ -243,6 +260,7 @@ export interface AppNotification {
   body: string | null;
   decision_id: string | null;
   task_id: string | null;
+  space_id: string | null;
   created_at: string;
   read_at: string | null;
 }

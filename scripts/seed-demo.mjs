@@ -97,6 +97,19 @@ await run("Clearing groups", db.from("groups").delete().not("id", "is", null));
 await run("Clearing private chats", db.from("spaces").delete().not("id", "is", null));
 await run("Clearing the library", db.from("library_items").delete().not("id", "is", null));
 await run("Clearing the login log", db.from("login_events").delete().not("id", "is", null));
+
+// Pictures visitors added to messages: the rows went with the rooms above,
+// the files are removed here. One folder per room; a database without the
+// pictures update has no such bucket, which is fine.
+{
+  const bucket = db.storage.from("message-images");
+  const { data: folders } = await bucket.list("", { limit: 1000 });
+  for (const folder of folders ?? []) {
+    const { data: files } = await bucket.list(folder.name, { limit: 1000 });
+    const paths = (files ?? []).map((f) => `${folder.name}/${f.name}`);
+    if (paths.length) await bucket.remove(paths);
+  }
+}
 const oldDemo = await run("Finding old demo members", db.from("profiles").select("id").like("email", `%${DEMO_DOMAIN}`));
 for (const p of oldDemo) {
   const { error } = await db.auth.admin.deleteUser(p.id);

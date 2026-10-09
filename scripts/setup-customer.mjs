@@ -65,6 +65,17 @@ if (Array.isArray(customer.skillAreas) && customer.skillAreas.length) {
   console.log(`Skill areas: ${customer.skillAreas.join(", ")}`);
 }
 
+// Optional: an account (for example the secretary's) made co-owner of every
+// new group room, so it can rename, close and pin rooms alongside whoever
+// created them. Takes effect once that person has been added as a member.
+if (customer.roomCoOwnerEmail) {
+  const { error } = await supabase
+    .from("app_settings")
+    .upsert({ key: "room_coowner_email", value: customer.roomCoOwnerEmail.trim().toLowerCase() }, { onConflict: "key" });
+  if (error) fail("Setting the room co-owner (have all the migrations been applied?)", error);
+  console.log(`Room co-owner: ${customer.roomCoOwnerEmail}`);
+}
+
 // ---- 2. first admin ----------------------------------------------------
 
 const admin = customer.admin;

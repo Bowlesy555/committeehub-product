@@ -8,6 +8,8 @@ import { assigneeIdsOf } from "@/lib/tasks";
 import { roomLink } from "@/lib/rooms";
 import { Modal } from "@/components/Modal";
 import { SortSelect } from "@/components/SortSelect";
+import { SearchBox } from "@/components/SearchBox";
+import { matchesQuery } from "@/lib/search";
 import { compareBy, usePersistedSort, type SortMode } from "@/lib/sort";
 
 // Tasks have no comments of their own, so there's no "newest comments" here.
@@ -76,14 +78,26 @@ export default function TasksPage() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const [sortMode, setSortMode] = usePersistedSort("sort:tasks", "created", TASK_SORTS);
+  const [search, setSearch] = useState("");
 
   const byColumn = useMemo(() => {
     const cols: Record<TaskStatus, Task[]> = { todo: [], doing: [], done: [], blocked: [] };
-    Object.values(tasks).forEach((t) => cols[t.status].push(t));
+    Object.values(tasks)
+      .filter((t) =>
+        matchesQuery(
+          search,
+          t.title,
+          t.description,
+          assigneeIdsOf(t.id, taskAssignees)
+            .map((id) => profiles[id]?.name)
+            .join(" ")
+        )
+      )
+      .forEach((t) => cols[t.status].push(t));
     const cmp = compareBy<Task>(sortMode, { name: (t) => t.title, created: (t) => t.created_at });
     (Object.keys(cols) as TaskStatus[]).forEach((k) => cols[k].sort(cmp));
     return cols;
-  }, [tasks, sortMode]);
+  }, [tasks, sortMode, search, taskAssignees, profiles]);
 
   function openCreate() {
     setGroupId(myGroupIds[0] || "");
@@ -264,7 +278,12 @@ export default function TasksPage() {
         </button>
       </div>
       <p className="section-desc">Tasks are actions assigned to committee members.</p>
-      <div className="row" style={{ marginBottom: 12, justifyContent: "flex-end" }}>
+      <div className="row wrap" style={{ marginBottom: 12, gap: 8, justifyContent: "space-between" }}>
+        <SearchBox
+          value={search}
+          onChange={setSearch}
+          placeholder="Search tasks by title, description or person…"
+        />
         <SortSelect value={sortMode} onChange={setSortMode} options={TASK_SORTS} />
       </div>
 

@@ -6,12 +6,19 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAppData, useSpaceMessages } from "@/lib/data-store";
 import { useToast } from "@/lib/toast";
 import { fmtDateTime } from "@/lib/format";
-import { isEffectivelyPinned, roomDisplayName, roomParticipantIds } from "@/lib/rooms";
+import {
+  INACTIVE_ROOM_DAYS,
+  isEffectivelyPinned,
+  roomDisplayName,
+  roomParticipantIds,
+} from "@/lib/rooms";
 import { Modal } from "@/components/Modal";
 import { FormatBar } from "@/components/FormatBar";
 import { AssigneePicker } from "@/components/AssigneePicker";
 import { AttachedDocuments } from "@/components/AttachedDocuments";
 import { hasFormatting, renderRichText } from "@/lib/rich-text";
+import { MessageImages } from "@/components/MessageImages";
+import { MAX_MESSAGE_IMAGES, MESSAGE_IMAGE_BUCKET, prepareImage } from "@/lib/images";
 import { DEFAULT_VOTE_OPTIONS } from "@/types";
 
 function deriveTitle(text: string): string {
@@ -46,6 +53,7 @@ function RoomView({ id }: { id: string }) {
     groups,
     groupMembers,
     spaceParticipants,
+    spaceOwners,
     profiles,
     userId,
     isGroupAdmin,
@@ -59,6 +67,9 @@ function RoomView({ id }: { id: string }) {
   const threadRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const editRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Pictures chosen or pasted for the message being written (already shrunk).
+  const [pending, setPending] = useState<{ id: string; blob: Blob; preview: string }[]>([]);
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingRoom, setDeletingRoom] = useState(false);
@@ -92,7 +103,21 @@ function RoomView({ id }: { id: string }) {
   const isPrivate = space?.visibility === "private";
   const spaceGroup = space?.group_id ? groups[space.group_id] : null;
   const pinnedNow = !!space && isEffectivelyPinned(space);
-  const canManage = !!space && (isGroupAdmin(space.group_id) || space.created_by === userId);
+  // Co-owners (e.g. the secretary) manage a room alongside its creator.
+  const coOwnerIds = Object.values(spaceOwners)
+    .filter((o) => o.space_id === id)
+    .map((o) => o.member_id);
+  const canManage =
+    !!space &&
+    (isGroupAdmin(space.group_id) || space.created_by === userId || coOwnerIds.includes(userId ?? ""));
+
+  // The monthly sweep asked whether this quiet room should be closed, and
+  // nothing has happened since (no new message, no "keep it open").
+  const lastActivityMs = space ? new Date(space.last_message_at ?? space.created_at).getTime() : 0;
+  const promptedMs = space?.inactivity_prompted_at ? new Date(space.inactivity_prompted_at).getTime() : 0;
+  const dismissedMs = space?.inactivity_dismissed_at ? new Date(space.inactivity_dismissed_at).getTime() : 0;
+  const showQuietBanner =
+    canManage && !isPrivate && space?.status === "open" && promptedMs > lastActivityMs && promptedMs > dismissedMs;
 
   // Group rooms: group admins only. Private chats: whoever started it.
   const canDeleteRoom = !!space && (isPrivate ? space.created_by === userId : isGroupAdmin(space.group_id));
@@ -274,9 +299,63 @@ function RoomView({ id }: { id: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, ready, messages.length]);
 
+  async function removeImages(paths: string[]) {
+    if (paths.length === 0) return;
+    // Best effort: a picture that can't be removed is harmless, just untidy.
+    await supabase.storage.from(MESSAGE_IMAGE_BUCKET).remove(paths);
+  }
+
+  async function addImages(files: File[]) {
+    const room = MAX_MESSAGE_IMAGES - pending.length;
+    if (room <= 0) {
+      showToast(`A message can have up to ${MAX_MESSAGE_IMAGES} pictures`);
+      return;
+    }
+    if (files.length > room) {
+      showToast(`Only the first ${room} picture${room === 1 ? "" : "s"} added — the limit is ${MAX_MESSAGE_IMAGES} per message`);
+    }
+    for (const file of files.slice(0, room)) {
+      try {
+        const blob = await prepareImage(file);
+        const preview = URL.createObjectURL(blob);
+        setPending((cur) => {
+          if (cur.length >= MAX_MESSAGE_IMAGES) {
+            URL.revokeObjectURL(preview);
+            return cur;
+          }
+          return [...cur, { id: crypto.randomUUID(), blob, preview }];
+        });
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : "Couldn't add that image");
+      }
+    }
+  }
+
+  function dropPending(pid: string) {
+    setPending((cur) => {
+      const gone = cur.find((p) => p.id === pid);
+      if (gone) URL.revokeObjectURL(gone.preview);
+      return cur.filter((p) => p.id !== pid);
+    });
+  }
+
   async function send() {
-    if (!draft.trim() || !userId || !space) return;
+    if ((!draft.trim() && pending.length === 0) || !userId || !space) return;
     setSending(true);
+    const uploaded: string[] = [];
+    for (const p of pending) {
+      const path = `${space.id}/${crypto.randomUUID()}.jpg`;
+      const { error: upErr } = await supabase.storage
+        .from(MESSAGE_IMAGE_BUCKET)
+        .upload(path, p.blob, { contentType: "image/jpeg", cacheControl: "3600" });
+      if (upErr) {
+        await removeImages(uploaded);
+        setSending(false);
+        showToast(`Couldn't upload the picture: ${upErr.message}`);
+        return;
+      }
+      uploaded.push(path);
+    }
     const { error } = await supabase
       .from("messages")
       .insert({
@@ -284,11 +363,16 @@ function RoomView({ id }: { id: string }) {
         topic_id: activeTopicId,
         author_id: userId,
         text: draft.trim(),
+        image_paths: uploaded,
       });
     setSending(false);
-    if (error) showToast(error.message);
-    else {
+    if (error) {
+      await removeImages(uploaded);
+      showToast(error.message);
+    } else {
       setDraft("");
+      pending.forEach((p) => URL.revokeObjectURL(p.preview));
+      setPending([]);
       if (composerRef.current) composerRef.current.style.height = "";
     }
   }
@@ -301,6 +385,8 @@ function RoomView({ id }: { id: string }) {
   async function deleteRoom() {
     if (!space) return;
     setRoomDeleteBusy(true);
+    // Remove the room's pictures first -- afterwards nothing says who may.
+    await removeImages(messages.flatMap((m) => m.image_paths ?? []));
     const { data, error } = await supabase.from("spaces").delete().eq("id", space.id).select();
     setRoomDeleteBusy(false);
     if (error) {
@@ -314,11 +400,15 @@ function RoomView({ id }: { id: string }) {
   }
 
   async function deleteMessage(messageId: string) {
+    const paths = messages.find((m) => m.id === messageId)?.image_paths ?? [];
     const { data, error } = await supabase.from("messages").delete().eq("id", messageId).select();
     setConfirmDeleteId(null);
     if (error) showToast(error.message);
     else if (!data?.length) showToast("That message couldn't be deleted");
-    else showToast("Message deleted");
+    else {
+      showToast("Message deleted");
+      void removeImages(paths);
+    }
   }
 
   function startEditMessage(messageId: string, text: string) {
@@ -326,8 +416,12 @@ function RoomView({ id }: { id: string }) {
     setEditText(text);
   }
 
+  // A message that is only pictures may have its text cleared; one without may not.
+  const editingHasImages = !!editingMessageId &&
+    (messages.find((m) => m.id === editingMessageId)?.image_paths?.length ?? 0) > 0;
+
   async function saveEditMessage() {
-    if (!editingMessageId || !editText.trim()) return;
+    if (!editingMessageId || (!editText.trim() && !editingHasImages)) return;
     setEditSaving(true);
     const { error } = await supabase
       .from("messages")
@@ -418,6 +512,16 @@ function RoomView({ id }: { id: string }) {
     if (error) showToast(error.message);
   }
 
+  async function keepOpen() {
+    if (!space) return;
+    const { error } = await supabase
+      .from("spaces")
+      .update({ inactivity_dismissed_at: new Date().toISOString() })
+      .eq("id", space.id);
+    if (error) showToast(error.message);
+    else showToast("Okay — we'll ask again if it stays quiet");
+  }
+
   function openPinModal() {
     setPinMode("permanent");
     setPinUntil("");
@@ -480,6 +584,11 @@ function RoomView({ id }: { id: string }) {
         ) : (
           <span className="badge">{spaceGroup?.name}</span>
         )}
+        {!isPrivate && coOwnerIds.length > 0 && (
+          <span className="help">
+            Co-owner: {coOwnerIds.map((mid) => profiles[mid]?.name || "Someone").join(", ")}
+          </span>
+        )}
         {pinnedNow && (
           <span className="badge">
             Pinned{space.pinned_until && <> until {fmtDateTime(space.pinned_until)}</>}
@@ -517,6 +626,25 @@ function RoomView({ id }: { id: string }) {
             </button>
           ))}
       </div>
+
+      {showQuietBanner && (
+        <div className="card pad" style={{ marginBottom: 14, borderColor: "var(--warn)" }}>
+          <div className="row wrap" style={{ gap: 10, justifyContent: "space-between" }}>
+            <span>
+              This room hasn&apos;t had a message for over {INACTIVE_ROOM_DAYS} days. Does it
+              still need to be open?
+            </span>
+            <span className="row" style={{ gap: 6 }}>
+              <button className="btn sm" onClick={toggleStatus}>
+                Close room
+              </button>
+              <button className="btn sm" onClick={keepOpen}>
+                Keep it open
+              </button>
+            </span>
+          </div>
+        </div>
+      )}
 
       {!isPrivate && selectionMenu && (
         <div
@@ -688,7 +816,7 @@ function RoomView({ id }: { id: string }) {
                         <button
                           className="btn primary sm"
                           onClick={saveEditMessage}
-                          disabled={editSaving || !editText.trim()}
+                          disabled={editSaving || (!editText.trim() && !editingHasImages)}
                         >
                           {editSaving ? "Saving…" : "Save"}
                         </button>
@@ -698,7 +826,13 @@ function RoomView({ id }: { id: string }) {
                       </div>
                     </div>
                   ) : (
-                    <div className="txt">{renderRichText(m.text)}</div>
+                    <>
+                      {m.text && <div className="txt">{renderRichText(m.text)}</div>}
+                      {(m.image_paths?.length ?? 0) > 0 && <MessageImages paths={m.image_paths} />}
+                      {m.images_removed_at && (m.image_paths?.length ?? 0) === 0 && (
+                        <div className="help">📷 Picture removed</div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -712,7 +846,46 @@ function RoomView({ id }: { id: string }) {
             {renderRichText(draft)}
           </div>
         )}
+        {pending.length > 0 && (
+          <div className="pending-images">
+            {pending.map((p) => (
+              <div className="thumb" key={p.id}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- a local blob preview */}
+                <img src={p.preview} alt="Picture to send" />
+                <button
+                  type="button"
+                  className="x"
+                  aria-label="Remove this picture"
+                  onClick={() => dropPending(p.id)}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="composer">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={(e) => {
+              const files = Array.from(e.target.files ?? []);
+              e.target.value = "";
+              if (files.length) void addImages(files);
+            }}
+          />
+          <button
+            type="button"
+            className="btn"
+            title="Attach a picture (or paste one into the box)"
+            aria-label="Attach a picture"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            📎
+          </button>
           <textarea
             ref={composerRef}
             className="textarea"
@@ -722,6 +895,17 @@ function RoomView({ id }: { id: string }) {
             onChange={(e) => {
               setDraft(e.target.value);
               autoGrow(e.target);
+            }}
+            onPaste={(e) => {
+              // A picture on the clipboard becomes an attachment -- unless text
+              // came with it (copying cells from a spreadsheet gives both).
+              const files = Array.from(e.clipboardData.files).filter((f) =>
+                f.type.startsWith("image/")
+              );
+              if (files.length > 0 && !e.clipboardData.getData("text/plain")) {
+                e.preventDefault();
+                void addImages(files);
+              }
             }}
             onKeyDown={(e) => {
               // Enter sends, Shift+Enter adds a line. On a touch screen there's
@@ -736,7 +920,7 @@ function RoomView({ id }: { id: string }) {
           <button
             className="btn primary"
             onClick={send}
-            disabled={sending || !draft.trim()}
+            disabled={sending || (!draft.trim() && pending.length === 0)}
           >
             Send
           </button>

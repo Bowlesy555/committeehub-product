@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/resend";
+import { cleanUpPictures } from "@/lib/picture-cleanup";
+import { sweepQuietRooms } from "@/lib/room-sweep";
 
 // Scheduled once a day by Vercel Cron (see vercel.json). Despite the path,
 // this now covers both decisions and tasks -- same daily trigger, kept as
@@ -13,6 +15,10 @@ import { sendEmail } from "@/lib/resend";
 //     "the day before" so a run's exact time of day doesn't skip a decision).
 //  3. Email a task's assignees the day before it's due, and once more if it
 //     goes overdue without being marked done.
+//  4. Remove pictures in messages older than the retention setting (Admin tab),
+//     and any stray files nothing refers to.
+//  5. Ask the creator of any open room with no messages for 30+ days whether it
+//     should be closed (each room is asked at most once per 30 days).
 export async function GET(request: Request) {
   const auth = request.headers.get("authorization");
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -176,8 +182,25 @@ export async function GET(request: Request) {
     "overdue_notified"
   );
 
+  // Its own try: a storage hiccup must not stop the reminders above.
+  let pictures: Awaited<ReturnType<typeof cleanUpPictures>> | { error: string };
+  try {
+    pictures = await cleanUpPictures(admin, now);
+  } catch (e) {
+    pictures = { error: e instanceof Error ? e.message : "picture clean-up failed" };
+  }
+
+  let quietRooms: Awaited<ReturnType<typeof sweepQuietRooms>> | { error: string };
+  try {
+    quietRooms = await sweepQuietRooms(admin, now, new URL(request.url).origin);
+  } catch (e) {
+    quietRooms = { error: e instanceof Error ? e.message : "room sweep failed" };
+  }
+
   return NextResponse.json({
     ok: true,
+    quietRooms,
+    pictures,
     expiredCount,
     reminderCount,
     taskReminderCount,

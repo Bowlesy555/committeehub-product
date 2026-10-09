@@ -289,6 +289,14 @@ button{ font-family:inherit; }
 .fmt-btn:hover{ background:var(--surface-2); }
 .fmt-swatch{ width:14px; height:14px; border-radius:50%; display:block; }
 .fmt-sep{ width:1px; height:16px; background:var(--line-2); margin:0 6px; }
+.msg-images{ display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+.msg-images a{ display:block; line-height:0; }
+.msg-images img{ display:block; max-width:min(100%, 340px); max-height:280px; border-radius:8px; border:1px solid var(--line); background:var(--surface-3); }
+.msg-images .ph{ display:flex; align-items:center; justify-content:center; width:160px; height:90px; border-radius:8px; background:var(--surface-3); color:var(--muted); font-size:11.5px; }
+.pending-images{ display:flex; flex-wrap:wrap; gap:10px; padding:10px 16px 0; }
+.pending-images .thumb{ position:relative; line-height:0; }
+.pending-images img{ height:64px; width:auto; border-radius:6px; border:1px solid var(--line); }
+.pending-images .x{ position:absolute; top:-7px; right:-7px; width:20px; height:20px; border-radius:50%; border:1px solid var(--line-2); background:var(--surface); color:var(--text); font-size:12px; line-height:1; cursor:pointer; padding:0; }
 .msg-preview{ padding:0 16px 8px; font-size:13px; color:var(--muted); white-space:pre-wrap; word-break:break-word; }
 .msg-preview b.lbl{ font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; margin-right:6px; }
 

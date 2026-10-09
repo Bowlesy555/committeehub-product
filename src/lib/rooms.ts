@@ -1,6 +1,9 @@
 import type { Profile, Space, SpaceParticipant } from "@/types";
 
 /** Link to a room, optionally opening straight onto one of its topics. */
+/** A group room with no messages for this long is flagged to its creator. */
+export const INACTIVE_ROOM_DAYS = 30;
+
 export function roomLink(spaceId: string, topicId?: string | null): string {
   return topicId ? `/spaces/${spaceId}?topic=${topicId}` : `/spaces/${spaceId}`;
 }

@@ -7,6 +7,8 @@ import { initials, colorFor } from "@/lib/format";
 import { roleLabelsFor } from "@/lib/roles";
 import { Modal } from "@/components/Modal";
 import { LoginLog } from "@/components/LoginLog";
+import { PictureRetention } from "@/components/PictureRetention";
+import { StartGroup } from "@/components/StartGroup";
 import type { Capacity, GroupKind } from "@/types";
 
 export default function AdminPage() {
@@ -15,11 +17,17 @@ export default function AdminPage() {
     profiles,
     groups,
     groupMembers,
+    spaces,
+    decisions,
+    tasks,
+    documents,
+    meetings,
     roles,
     memberRoles,
     skillAreas,
     isGroupAdmin,
     amAnyGroupAdmin,
+    isCommitteeMember,
     supabase,
   } = useAppData();
   const showToast = useToast();
@@ -58,10 +66,13 @@ export default function AdminPage() {
   const [settingPinFor, setSettingPinFor] = useState<string | null>(null);
   const [newRoleLabel, setNewRoleLabel] = useState("");
   const [newSkillAreaLabel, setNewSkillAreaLabel] = useState("");
+  const [deletingGroup, setDeletingGroup] = useState<string | null>(null);
+  const [deleteTyped, setDeleteTyped] = useState("");
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [offboarding, setOffboarding] = useState<string | null>(null);
   const [offboardingBusy, setOffboardingBusy] = useState(false);
 
-  if (!amAnyGroupAdmin) {
+  if (!amAnyGroupAdmin && !isCommitteeMember) {
     return <div className="empty">Admin access only.</div>;
   }
 
@@ -333,6 +344,21 @@ export default function AdminPage() {
     setNewGroupName("");
     setNewGroupQuorum(1);
     showToast("Group created");
+  }
+
+  async function deleteGroup(groupId: string) {
+    setDeleteBusy(true);
+    const { data, error } = await supabase.from("groups").delete().eq("id", groupId).select();
+    setDeleteBusy(false);
+    if (error) {
+      showToast(error.message);
+    } else if (!data?.length) {
+      showToast("That group couldn't be deleted");
+    } else {
+      showToast("Group deleted");
+      setDeletingGroup(null);
+      setDeleteTyped("");
+    }
   }
 
   async function addMember(groupId: string) {
@@ -709,6 +735,8 @@ export default function AdminPage() {
             </Modal>
           )}
 
+          <PictureRetention />
+
           <LoginLog />
 
           <div className="section-title">
@@ -811,9 +839,14 @@ export default function AdminPage() {
         </>
       )}
 
+      {!me?.is_global_admin && isCommitteeMember && <StartGroup />}
+
       <div className="section-title">
-        <h2>Groups</h2>
+        <h2>{me?.is_global_admin ? "Groups" : "Groups you run"}</h2>
       </div>
+      {!Object.values(groups).some((g) => isGroupAdmin(g.id)) && (
+        <p className="help">You don&apos;t run any groups yet. Start one above.</p>
+      )}
       {Object.values(groups)
         .filter((g) => isGroupAdmin(g.id))
         .map((g) => {
@@ -878,9 +911,72 @@ export default function AdminPage() {
                   Add
                 </button>
               </div>
+              {g.kind === "working-party" && (
+                <div className="row" style={{ marginTop: 10, justifyContent: "flex-end" }}>
+                  <button
+                    className="btn sm danger"
+                    onClick={() => {
+                      setDeleteTyped("");
+                      setDeletingGroup(g.id);
+                    }}
+                  >
+                    Delete group
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}
+
+      {deletingGroup && groups[deletingGroup] && (() => {
+        const g = groups[deletingGroup];
+        const inGroup = <T extends { group_id: string | null }>(rows: Record<string, T>) =>
+          Object.values(rows).filter((r) => r.group_id === g.id).length;
+        const parts: [number, string, string][] = [
+          [inGroup(spaces), "room", "rooms"],
+          [inGroup(decisions), "motion", "motions"],
+          [inGroup(tasks), "task", "tasks"],
+          [inGroup(documents), "document link", "document links"],
+          [inGroup(meetings), "meeting", "meetings"],
+        ];
+        const listed = parts.filter(([n]) => n > 0).map(([n, one, many]) => `${n} ${n === 1 ? one : many}`);
+        return (
+          <Modal
+            title={`Delete "${g.name}"?`}
+            onClose={() => setDeletingGroup(null)}
+            footer={
+              <>
+                <button className="btn" onClick={() => setDeletingGroup(null)}>
+                  Keep it
+                </button>
+                <button
+                  className="btn danger"
+                  onClick={() => deleteGroup(g.id)}
+                  disabled={deleteBusy || deleteTyped.trim() !== g.name}
+                >
+                  {deleteBusy ? "Deleting…" : "Delete permanently"}
+                </button>
+              </>
+            }
+          >
+            <p>
+              This permanently deletes the group and everything in it
+              {listed.length > 0 ? `: ${listed.join(", ")}` : ""}, including all messages and
+              votes. It can&apos;t be undone, and everyone loses access straight away.
+            </p>
+            <div className="field">
+              <label>Type the group&apos;s name to confirm</label>
+              <input
+                className="input"
+                value={deleteTyped}
+                onChange={(e) => setDeleteTyped(e.target.value)}
+                placeholder={g.name}
+                autoFocus
+              />
+            </div>
+          </Modal>
+        );
+      })()}
     </div>
   );
 }

@@ -9,6 +9,8 @@ import { fmtDateTime, initials, colorFor, toLocalInput } from "@/lib/format";
 import { Modal } from "@/components/Modal";
 import { AttachedDocuments } from "@/components/AttachedDocuments";
 import { SortSelect } from "@/components/SortSelect";
+import { SearchBox } from "@/components/SearchBox";
+import { matchesQuery } from "@/lib/search";
 import { compareBy, usePersistedSort, type SortMode } from "@/lib/sort";
 
 const DECISION_SORTS: readonly SortMode[] = ["created", "comments", "az", "za"];
@@ -45,6 +47,7 @@ export default function DecisionsPage() {
   const [creating, setCreating] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<DecisionStatus | "all">("all");
+  const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = usePersistedSort("sort:decisions", "created", DECISION_SORTS);
 
   const [deleting, setDeleting] = useState<Decision | null>(null);
@@ -144,8 +147,17 @@ export default function DecisionsPage() {
     [list, sortMode, spaces]
   );
 
-  const visibleList =
-    statusFilter === "all" ? sortedList : sortedList.filter((d) => d.status === statusFilter);
+  const visibleList = (
+    statusFilter === "all" ? sortedList : sortedList.filter((d) => d.status === statusFilter)
+  ).filter((d) =>
+    matchesQuery(
+      search,
+      d.title,
+      d.motion_text,
+      profiles[d.proposed_by || ""]?.name,
+      groups[d.group_id]?.name
+    )
+  );
 
   function activeMemberCount(gid: string) {
     return allGroupMembers.filter(
@@ -339,7 +351,12 @@ export default function DecisionsPage() {
       )}
 
       {list.length > 0 && (
-        <div className="row" style={{ marginBottom: 8, justifyContent: "flex-end" }}>
+        <div className="row wrap" style={{ marginBottom: 8, gap: 8, justifyContent: "space-between" }}>
+          <SearchBox
+            value={search}
+            onChange={setSearch}
+            placeholder="Search motions by title, wording or proposer…"
+          />
           <SortSelect value={sortMode} onChange={setSortMode} options={DECISION_SORTS} />
         </div>
       )}
@@ -362,7 +379,11 @@ export default function DecisionsPage() {
       {visibleList.length === 0 && (
         <div className="card">
           <div className="empty">
-            {list.length === 0 ? "No motions yet." : "No decisions match this filter."}
+            {list.length === 0
+              ? "No motions yet."
+              : search.trim()
+                ? "No decisions match your search."
+                : "No decisions match this filter."}
           </div>
         </div>
       )}

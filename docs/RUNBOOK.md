@@ -134,6 +134,19 @@ Sign in as the first admin with the email and PIN from the JSON, change the
 PIN (🔑 in the topbar), create the main committee group from the Admin tab,
 and add the members.
 
+## Pictures, quiet rooms and the room co-owner
+
+- **Pictures in messages.** Members can paste or attach up to four pictures
+  per message. They are stored in the committee's own Supabase project and
+  removed automatically after 90 days; a global admin can change that under
+  Admin → Picture retention (0 keeps them forever).
+- **Quiet-room prompt.** The daily job asks a room's creator whether to close
+  a room that has had no messages for 30 days. In-app always; by email too
+  if reminder emails are set up.
+- **Room co-owner (optional).** Add `"roomCoOwnerEmail": "secretary@..."` to
+  the committee's JSON and re-run the setup command. That member becomes
+  co-owner of every new room. Leave it out and nothing happens.
+
 ## Minutes import
 
 Calendar → Import action items is on for every committee, free, using a

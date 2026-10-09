@@ -2,27 +2,52 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAppData } from "@/lib/data-store";
 import { useToast } from "@/lib/toast";
 import { fmtDateTime, timeAgo } from "@/lib/format";
 import { isEffectivelyPinned, roomDisplayName, roomParticipantIds } from "@/lib/rooms";
 import { Modal } from "@/components/Modal";
+import { SearchBox } from "@/components/SearchBox";
+import { matchesQuery, useMessageSearch } from "@/lib/search";
 
 export default function ChatPage() {
   const { spaces, profiles, spaceParticipants, userId, supabase, unreadSpaceIds } = useAppData();
   const showToast = useToast();
+  const router = useRouter();
 
   const [startingChat, setStartingChat] = useState(false);
   const [chatParticipantIds, setChatParticipantIds] = useState<string[]>([]);
   const [chatName, setChatName] = useState("");
   const [chatSaving, setChatSaving] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
+  // Search looks at chat names, who is in them, and what's been said.
+  const [search, setSearch] = useState("");
+  const q = search.trim();
+  const searching = q.length > 0;
+  const messageHits = useMessageSearch(q);
 
   const closedCount = Object.values(spaces).filter(
     (s) => s.visibility === "private" && s.status === "closed"
   ).length;
+  const closedUnread = Object.values(spaces).some(
+    (s) => s.visibility === "private" && s.status === "closed" && unreadSpaceIds.has(s.id)
+  );
   const chats = Object.values(spaces)
-    .filter((s) => s.visibility === "private" && s.status === (showClosed ? "closed" : "open"))
+    .filter(
+      (s) =>
+        s.visibility === "private" &&
+        (searching || s.status === (showClosed ? "closed" : "open")) &&
+        (!searching ||
+          matchesQuery(
+            q,
+            roomDisplayName(s, userId, spaceParticipants, profiles),
+            roomParticipantIds(s.id, spaceParticipants)
+              .map((id) => profiles[id]?.name)
+              .join(" ")
+          ) ||
+          !!messageHits[s.id])
+    )
     .sort((a, b) => {
       const pa = isEffectivelyPinned(a) ? 1 : 0;
       const pb = isEffectivelyPinned(b) ? 1 : 0;
@@ -79,6 +104,7 @@ export default function ChatPage() {
     } else {
       showToast("Chat started");
       setStartingChat(false);
+      router.push(`/spaces/${newSpaceId}`);
     }
   }
 
@@ -95,18 +121,26 @@ export default function ChatPage() {
         whole committee, and not even admins.
       </p>
 
-      <div className="row" style={{ marginBottom: 12 }}>
+      <div className="row wrap" style={{ marginBottom: 12, gap: 8 }}>
         <button className="btn sm" onClick={() => setShowClosed((v) => !v)}>
           {showClosed ? "← Back to open chats" : `Closed chats (${closedCount})`}
+          {!showClosed && closedUnread && <span className="unread-dot" style={{ marginLeft: 6 }} />}
         </button>
+        <SearchBox
+          value={search}
+          onChange={setSearch}
+          placeholder="Search chats and what's been said in them…"
+        />
       </div>
 
       {chats.length === 0 ? (
         <div className="card">
           <div className="empty">
-            {showClosed
-              ? "No closed chats."
-              : "No chats yet — start one with “+ New chat”."}
+            {searching
+              ? `No chats match “${q}”.`
+              : showClosed
+                ? "No closed chats."
+                : "No chats yet — start one with “+ New chat”."}
           </div>
         </div>
       ) : (
@@ -131,6 +165,12 @@ export default function ChatPage() {
                     {timeAgo(s.last_message_at || s.created_at)}
                     {pinned && s.pinned_until && <> · pinned until {fmtDateTime(s.pinned_until)}</>}
                   </div>
+                  {searching && messageHits[s.id] && (
+                    <div className="s" title="A matching message in this chat">
+                      💬 {messageHits[s.id].snippet}
+                      {messageHits[s.id].count > 1 && ` (${messageHits[s.id].count} messages)`}
+                    </div>
+                  )}
                 </div>
               </Link>
             );

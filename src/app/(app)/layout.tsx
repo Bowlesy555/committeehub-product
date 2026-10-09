@@ -29,11 +29,13 @@ function Shell({ children }: { children: React.ReactNode }) {
     dataReady,
     userId,
     amAnyGroupAdmin,
+    isCommitteeMember,
     supabase,
     unreadSpaceIds,
     spaces,
     unreadDecisionNotificationCount,
     unreadTaskNotificationCount,
+    unreadRoomNotificationCount,
     memberRoles,
     roles,
   } = useAppData();
@@ -67,7 +69,15 @@ function Shell({ children }: { children: React.ReactNode }) {
   const openSpace = pathname.startsWith("/spaces/") ? spaces[pathname.split("/")[2]] : undefined;
   const activeHref = openSpace?.visibility === "private" ? "/chat" : pathname.startsWith("/spaces") ? "/spaces" : null;
 
-  const tabs = amAnyGroupAdmin ? [...TABS, ["/admin", "🛠️ Admin"] as [string, string]] : TABS;
+  // Admins get the full Admin tab. Other committee members get a lighter
+  // "Groups" tab at the same address, for starting and running their own groups.
+  const tabs =
+    amAnyGroupAdmin || isCommitteeMember
+      ? [
+          ...TABS,
+          ["/admin", me?.is_global_admin ? "🛠️ Admin" : "👥 Groups"] as [string, string],
+        ]
+      : TABS;
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -128,7 +138,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       <div className="tabs">
         {tabs.map(([href, label]) => {
           const hasUnread =
-            (href === "/spaces" && unreadRooms) ||
+            (href === "/spaces" && (unreadRooms || unreadRoomNotificationCount > 0)) ||
             (href === "/chat" && unreadChats) ||
             (href === "/decisions" && unreadDecisionNotificationCount > 0) ||
             (href === "/tasks" && unreadTaskNotificationCount > 0);
