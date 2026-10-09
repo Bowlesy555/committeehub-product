@@ -175,6 +175,20 @@ function RoomView({ id }: { id: string }) {
     setCustomOptions((prev) => prev.filter((_, idx) => idx !== i));
   }
 
+  // A deployment can keep pictures to global admins only (the public demos
+  // do, so a guest can't post images). The database enforces it; this just
+  // hides the controls. Assume allowed until told otherwise.
+  const [picturesAllowed, setPicturesAllowed] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    supabase.rpc("pictures_allowed").then(({ data }) => {
+      if (!cancelled && data === false) setPicturesAllowed(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
+
   const isPrivateRef = useRef(isPrivate);
   useEffect(() => {
     isPrivateRef.current = isPrivate;
@@ -877,15 +891,17 @@ function RoomView({ id }: { id: string }) {
               if (files.length) void addImages(files);
             }}
           />
-          <button
-            type="button"
-            className="btn"
-            title="Attach a picture (or paste one into the box)"
-            aria-label="Attach a picture"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            📎
-          </button>
+          {picturesAllowed && (
+            <button
+              type="button"
+              className="btn"
+              title="Attach a picture (or paste one into the box)"
+              aria-label="Attach a picture"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              📎
+            </button>
+          )}
           <textarea
             ref={composerRef}
             className="textarea"
@@ -902,7 +918,7 @@ function RoomView({ id }: { id: string }) {
               const files = Array.from(e.clipboardData.files).filter((f) =>
                 f.type.startsWith("image/")
               );
-              if (files.length > 0 && !e.clipboardData.getData("text/plain")) {
+              if (picturesAllowed && files.length > 0 && !e.clipboardData.getData("text/plain")) {
                 e.preventDefault();
                 void addImages(files);
               }

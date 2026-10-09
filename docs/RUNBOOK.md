@@ -140,6 +140,8 @@ and add the members.
   per message. They are stored in the committee's own Supabase project and
   removed automatically after 90 days; a global admin can change that under
   Admin → Picture retention (0 keeps them forever).
+  To keep pictures to global admins only, set `pictures_admins_only` to
+  `true` in the `app_settings` table (the demos do this themselves).
 - **Quiet-room prompt.** The daily job asks a room's creator whether to close
   a room that has had no messages for 30 days. In-app always; by email too
   if reminder emails are set up.
