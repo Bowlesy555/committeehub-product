@@ -9,6 +9,7 @@ import { initials, colorFor } from "@/lib/format";
 import { roleLabelsFor } from "@/lib/roles";
 import { brand } from "@/lib/brand";
 import { Modal } from "@/components/Modal";
+import { PushSettings } from "@/components/PushSettings";
 
 const TABS: [string, string][] = [
   ["/dashboard", "🏠 Hub"],
@@ -43,6 +44,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const showToast = useToast();
   const [settingPin, setSettingPin] = useState(false);
+  const [pushOpen, setPushOpen] = useState(false);
   const [pin, setPin] = useState("");
   const [savingPin, setSavingPin] = useState(false);
 
@@ -126,6 +128,13 @@ function Shell({ children }: { children: React.ReactNode }) {
             <div className="avatar" style={{ background: colorFor(me.id) }}>
               {initials(me.name)}
             </div>
+            <button
+              className="iconbtn"
+              title="Notifications on this device"
+              onClick={() => setPushOpen(true)}
+            >
+              🔔
+            </button>
             <button className="iconbtn" title="Set PIN" onClick={() => setSettingPin(true)}>
               🔑
             </button>
@@ -155,6 +164,8 @@ function Shell({ children }: { children: React.ReactNode }) {
         })}
       </div>
       <div className={`container${pathname === "/spaces" ? " wide" : ""}`}>{children}</div>
+
+      {pushOpen && <PushSettings onClose={() => setPushOpen(false)} />}
 
       {settingPin && (
         <Modal

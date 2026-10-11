@@ -116,13 +116,20 @@ for (const p of oldDemo) {
   if (error) console.warn(`Could not remove an old demo member: ${error.message}`);
 }
 
-// A public demo keeps pictures in messages to admins: anyone can sign in as
-// the guest, and the demo carries the product's name.
+// A public demo keeps pictures in messages, and phone notifications, to
+// admins: anyone can sign in as the guest, and the demo carries the
+// product's name.
 {
   const { error } = await db
     .from("app_settings")
-    .upsert({ key: "pictures_admins_only", value: "true" }, { onConflict: "key" });
-  if (error) console.warn(`Could not restrict pictures to admins: ${error.message}`);
+    .upsert(
+      [
+        { key: "pictures_admins_only", value: "true" },
+        { key: "push_admins_only", value: "true" },
+      ],
+      { onConflict: "key" }
+    );
+  if (error) console.warn(`Could not restrict pictures and notifications to admins: ${error.message}`);
 }
 
 // ---- roles and skill areas ---------------------------------------------

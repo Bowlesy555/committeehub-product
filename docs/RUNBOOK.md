@@ -134,6 +134,28 @@ Sign in as the first admin with the email and PIN from the JSON, change the
 PIN (🔑 in the topbar), create the main committee group from the Admin tab,
 and add the members.
 
+## Phone and computer notifications
+
+Members can switch on alerts for their own phone or computer from the bell
+in the top bar: a motion needing their vote, reminders, a task assigned to
+them, a quiet-room prompt, and (optionally) new messages.
+
+Nothing extra is needed per committee as long as the normal steps are
+followed, because the setup command does the work:
+
+- `"appUrl"` in the committee's JSON is their live address (step 6). The
+  database uses it to tell the app when something happens. If the address
+  changes later, change it in the JSON and re-run the setup command.
+- The setup command creates the committee's notification keys, keeps them
+  in the database, and prints three settings for Vercel:
+  `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and
+  `PUSH_WEBHOOK_SECRET`. Mark the last two as Sensitive.
+- Running the setup command again prints the same keys, so it is safe.
+
+On iPhones and iPads, notifications only work once the member has added the
+app to their Home Screen. To keep notifications to global admins only, set
+`push_admins_only` to `true` in `app_settings` (the demos do).
+
 ## Pictures, quiet rooms and the room co-owner
 
 - **Pictures in messages.** Members can paste or attach up to four pictures

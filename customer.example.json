@@ -2,6 +2,7 @@
   "orgName": "Riverside Sports Club",
   "appName": "Riverside CommitteeHub",
   "shortName": "Riverside",
+  "appUrl": "https://riverside.committeehub.co.uk",
   "brand": {
     "accent": "#1F5FA8",
     "logoBadge": false
@@ -11,8 +12,19 @@
     "name": "Alex Chair",
     "pin": "000000"
   },
-  "roles": ["Chairperson", "Vice Chair", "Secretary", "Treasurer", "Committee Member"],
-  "skillAreas": ["Governance & Rules", "Finance & Admin", "Events", "Communications & Media"],
+  "roles": [
+    "Chairperson",
+    "Vice Chair",
+    "Secretary",
+    "Treasurer",
+    "Committee Member"
+  ],
+  "skillAreas": [
+    "Governance & Rules",
+    "Finance & Admin",
+    "Events",
+    "Communications & Media"
+  ],
   "features": {
     "emailLinkSignIn": false
   }

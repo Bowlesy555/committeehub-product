@@ -11,6 +11,7 @@
 import { readFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import webpush from "web-push";
 
 const file = process.argv[2];
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -107,7 +108,39 @@ if (admin?.email) {
   console.log(`${email} is a global admin`);
 }
 
-// ---- 3. environment variables for Vercel -------------------------------
+// ---- 3. this deployment's address and its secrets -----------------------
+
+// Secrets are kept in the database's app_secrets table (which no signed-in
+// member can read), so running this again prints the same values instead of
+// new ones that would no longer match what is set on Vercel.
+async function secret(key, make) {
+  const { data, error } = await supabase.from("app_secrets").select("value").eq("key", key).maybeSingle();
+  if (error) fail("Reading app_secrets (have all the migrations been applied?)", error);
+  if (data) return data.value;
+  const value = make();
+  const { error: e2 } = await supabase.from("app_secrets").insert({ key, value });
+  if (e2) fail(`Saving ${key}`, e2);
+  return value;
+}
+
+const cronSecret = await secret("cron_secret", () => randomBytes(32).toString("hex"));
+const pushWebhookSecret = await secret("push_webhook_secret", () => randomBytes(32).toString("hex"));
+// The pair that lets this deployment, and nobody else, send notifications to
+// its members' devices.
+const vapid = JSON.parse(await secret("vapid_keys", () => JSON.stringify(webpush.generateVAPIDKeys())));
+
+// Where the database calls the app when something happens. Without it no
+// notifications are sent, so say so.
+const appUrl = (customer.appUrl ?? "").trim().replace(/\/+$/, "");
+if (/^https:\/\//.test(appUrl)) {
+  const { error } = await supabase.from("app_settings").upsert({ key: "app_url", value: appUrl }, { onConflict: "key" });
+  if (error) fail("Saving the app's address", error);
+  console.log(`Address for notifications: ${appUrl}`);
+} else {
+  console.log('No "appUrl" in the JSON (it must start https://): phone notifications stay off until it is added and this is run again.');
+}
+
+// ---- 4. environment variables for Vercel -------------------------------
 
 const f = customer.features ?? {};
 const b = customer.brand ?? {};
@@ -115,7 +148,10 @@ const lines = [
   ["NEXT_PUBLIC_SUPABASE_URL", url],
   ["NEXT_PUBLIC_SUPABASE_ANON_KEY", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "<anon key from Supabase>"],
   ["SUPABASE_SERVICE_ROLE_KEY", "<service role key from Supabase — mark as Sensitive>"],
-  ["CRON_SECRET", randomBytes(32).toString("hex")],
+  ["CRON_SECRET", cronSecret],
+  ["PUSH_WEBHOOK_SECRET", pushWebhookSecret],
+  ["NEXT_PUBLIC_VAPID_PUBLIC_KEY", vapid.publicKey],
+  ["VAPID_PRIVATE_KEY", vapid.privateKey],
   ["NEXT_PUBLIC_ORG_NAME", customer.orgName],
   ["NEXT_PUBLIC_APP_NAME", customer.appName],
   ["NEXT_PUBLIC_APP_SHORT_NAME", customer.shortName],
