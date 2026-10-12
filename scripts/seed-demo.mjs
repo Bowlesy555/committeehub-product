@@ -291,8 +291,10 @@ if (realIds.length && scenario.privateChat) {
 
 // ---- decisions ---------------------------------------------------------
 
-// A decision that reaches its quorum resolves itself (the database does
-// this), exactly as it would in real use.
+// A motion that reaches its quorum moves to "Decision made" by itself (the
+// database does this), exactly as it would in real use. One with
+// closedDaysAgo is then filed as passed or failed, as its proposer would;
+// one without is left waiting in the Decision made folder.
 const decisions = {};
 for (const d of scenario.decisions) {
   const [row] = await run(
@@ -315,7 +317,14 @@ for (const d of scenario.decisions) {
     await run("Casting a vote", db.from("votes").insert({ decision_id: row.id, member_id: who(voter), choice }));
   }
   if (d.closedDaysAgo !== undefined) {
-    await run("Backdating a motion", db.from("decisions").update({ closed_at: daysFromNow(-d.closedDaysAgo) }).eq("id", row.id));
+    const [now] = await run("Reading a motion's result", db.from("decisions").select("resolved_choice").eq("id", row.id));
+    await run(
+      "Filing a motion",
+      db.from("decisions").update({
+        status: now.resolved_choice === "no" ? "failed" : "passed",
+        closed_at: daysFromNow(-d.closedDaysAgo),
+      }).eq("id", row.id)
+    );
   }
 }
 

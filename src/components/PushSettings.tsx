@@ -161,7 +161,7 @@ export function PushSettings({ onClose }: { onClose: () => void }) {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) showToast(body.error ?? "The test couldn't be sent");
       else if (!body.devices) showToast("No devices are switched on yet");
-      else showToast(body.sent ? "Test sent — it should appear in a moment" : "The test couldn't be delivered");
+      else showToast(body.sent ? "Test sent — an alert should appear in a moment" : "The test couldn't be delivered");
     } finally {
       setBusy(false);
     }

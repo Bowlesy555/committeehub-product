@@ -82,6 +82,16 @@ export function buildActivityFeed(
   }
 
   for (const d of Object.values(decisions)) {
+    if (d.status === "decision_made" && d.made_at) {
+      items.push({
+        id: `decision-made:${d.id}`,
+        at: d.made_at,
+        icon: "📁",
+        text: `Decision made: "${d.title}" (${groups[d.group_id]?.name || "committee"})`,
+        href: "/decisions",
+      });
+      continue;
+    }
     if (d.status === "open" || !d.closed_at) continue;
     items.push({
       id: `decision:${d.id}`,

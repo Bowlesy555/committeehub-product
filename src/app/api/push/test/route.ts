@@ -17,6 +17,7 @@ export async function POST() {
     body: `This is a test from ${brand.appName}.`,
     url: "/dashboard",
     tag: "test",
+    force: true,
   });
   return NextResponse.json({ ok: true, ...result });
 }

@@ -9,6 +9,8 @@ export interface PushPayload {
   url: string;
   /** A newer notification with the same tag replaces the older one. */
   tag?: string;
+  /** Show it even if the app is open and in view (used by the test button). */
+  force?: boolean;
 }
 
 let configured: boolean | null = null;

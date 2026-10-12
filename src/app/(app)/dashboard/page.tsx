@@ -28,6 +28,7 @@ export default function DashboardPage() {
     profiles,
     roles,
     unreadSpaceIds,
+    isGroupAdmin,
     supabase,
   } = useAppData();
   const showToast = useToast();
@@ -78,6 +79,19 @@ export default function DashboardPage() {
   const attention: Attn[] = [];
 
   allDecisions.forEach((d) => {
+    // A motion that has reached quorum is waiting for its proposer.
+    if (d.status === "decision_made" && (d.proposed_by === userId || (!d.proposed_by && isGroupAdmin(d.group_id)))) {
+      attention.push({
+        id: `made:${d.id}`,
+        color: "red",
+        label: "Decision made · what happens next?",
+        icon: "📁",
+        title: d.title,
+        subtitle: `${groups[d.group_id]?.name || "committee"} · quorum reached`,
+        href: "/decisions",
+      });
+      return;
+    }
     if (d.status !== "open") return;
     const deadlineSoon = new Date(d.deadline).getTime() - new Date().getTime() < DEADLINE_SOON_MS;
     const myVote = userId ? votes[`${d.id}:${userId}`] : undefined;

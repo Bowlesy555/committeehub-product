@@ -118,7 +118,9 @@ export interface Message {
   images_removed_at: string | null;
 }
 
-export type DecisionStatus = "open" | "passed" | "failed" | "withdrawn";
+// "decision_made": quorum was reached and the motion is waiting for its
+// proposer to add a task, extend the deadline, or close and file it.
+export type DecisionStatus = "open" | "decision_made" | "passed" | "failed" | "withdrawn";
 
 export const DEFAULT_VOTE_OPTIONS = ["yes", "no", "abstain"];
 
@@ -143,6 +145,10 @@ export interface Decision {
   status: DecisionStatus;
   vote_options: string[];
   resolved_choice: string | null;
+  /** When it reached quorum and moved to "Decision made". */
+  made_at: string | null;
+  /** Extended to wait for everyone: only moves on once all have voted, or at the deadline. */
+  hold_for_all: boolean;
   created_at: string;
   closed_at: string | null;
   reminder_sent: boolean;

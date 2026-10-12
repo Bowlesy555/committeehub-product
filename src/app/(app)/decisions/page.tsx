@@ -10,6 +10,12 @@ import { Modal } from "@/components/Modal";
 import { AttachedDocuments } from "@/components/AttachedDocuments";
 import { SortSelect } from "@/components/SortSelect";
 import { SearchBox } from "@/components/SearchBox";
+import {
+  DecisionTaskModal,
+  ExtendDeadlineModal,
+  FileDecisionModal,
+  outcomeName,
+} from "@/components/DecisionActions";
 import { matchesQuery } from "@/lib/search";
 import { compareBy, usePersistedSort, type SortMode } from "@/lib/sort";
 
@@ -22,6 +28,7 @@ const MAX_VOTE_OPTIONS = 8;
 const STATUS_FILTERS: { id: DecisionStatus | "all"; label: string }[] = [
   { id: "all", label: "All" },
   { id: "open", label: "Open" },
+  { id: "decision_made", label: "Decision made" },
   { id: "passed", label: "Passed" },
   { id: "failed", label: "Failed" },
   { id: "withdrawn", label: "Withdrawn" },
@@ -48,6 +55,11 @@ export default function DecisionsPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<DecisionStatus | "all">("all");
   const [search, setSearch] = useState("");
+  // What the proposer is doing with a motion that has reached quorum.
+  const [taskFor, setTaskFor] = useState<Decision | null>(null);
+  const [extendFor, setExtendFor] = useState<Decision | null>(null);
+  const [reopenFor, setReopenFor] = useState<Decision | null>(null);
+  const [fileFor, setFileFor] = useState<Decision | null>(null);
   const [sortMode, setSortMode] = usePersistedSort("sort:decisions", "created", DECISION_SORTS);
 
   const [deleting, setDeleting] = useState<Decision | null>(null);
@@ -126,6 +138,7 @@ export default function DecisionsPage() {
     () => ({
       total: list.length,
       open: list.filter((d) => d.status === "open").length,
+      made: list.filter((d) => d.status === "decision_made").length,
       passed: list.filter((d) => d.status === "passed").length,
       failed: list.filter((d) => d.status === "failed").length,
       withdrawn: list.filter((d) => d.status === "withdrawn").length,
@@ -326,7 +339,7 @@ export default function DecisionsPage() {
         </button>
       </div>
       <p className="section-desc">
-        Decisions are formal votes requiring quorum. Once resolved, they stay here as a record —
+        Decisions are formal votes requiring quorum. When quorum is reached a motion moves to Decision made until its proposer files it. Filed motions stay here as a record —
         use the filters below to see the committee&apos;s history.
       </p>
 
@@ -337,6 +350,9 @@ export default function DecisionsPage() {
           </span>
           <span className="sitem">
             <strong>{stats.open}</strong>open
+          </span>
+          <span className="sitem">
+            <strong>{stats.made}</strong>decision made
           </span>
           <span className="sitem">
             <strong>{stats.passed}</strong>passed
@@ -388,7 +404,8 @@ export default function DecisionsPage() {
         </div>
       )}
 
-      {visibleList.map((d) => {
+      {(() => {
+        const render = (d: Decision) => {
         const math = computeQuorumMath(d, allGroupMembers, profiles, allVotes);
         const myVote = userId ? votes[`${d.id}:${userId}`] : undefined;
         const isOpen = expanded === d.id;
@@ -399,6 +416,8 @@ export default function DecisionsPage() {
         const canEdit =
           d.status === "open" && (d.proposed_by === userId || isGroupAdmin(d.group_id));
         const wordingLocked = allVotes.some((v) => v.decision_id === d.id);
+        // After quorum the proposer (or a group admin) decides what happens next.
+        const canAct = d.proposed_by === userId || isGroupAdmin(d.group_id);
         // Deletion is for motions made in error, so only while nobody has voted.
         const canDelete =
           !wordingLocked && (d.proposed_by === userId || isGroupAdmin(d.group_id));
@@ -432,13 +451,22 @@ export default function DecisionsPage() {
                     Withdraw
                   </button>
                 )}
+                {canAct && (d.status === "passed" || d.status === "failed") && (
+                  <button type="button" className="btn ghost sm" onClick={() => setReopenFor(d)}>
+                    Reopen
+                  </button>
+                )}
                 {canDelete && (
                   <button type="button" className="btn ghost sm" onClick={() => setDeleting(d)}>
                     Delete
                   </button>
                 )}
-                <span className={`pill pill-${d.status === "open" ? "pending" : d.status}`}>
-                  {d.status}
+                <span
+                  className={`pill pill-${
+                    d.status === "open" ? "pending" : d.status === "decision_made" ? "made" : d.status
+                  }`}
+                >
+                  {d.status === "decision_made" ? "decision made" : d.status}
                 </span>
               </div>
             </div>
@@ -459,6 +487,30 @@ export default function DecisionsPage() {
             )}
 
             <AttachedDocuments groupId={d.group_id} target={{ decision_id: d.id }} />
+
+            {d.status === "decision_made" && (
+              <div className="decision-made">
+                <div>
+                  <strong>Quorum reached on {outcomeName(d)}.</strong>{" "}
+                  {canAct
+                    ? "Choose what happens next:"
+                    : `Waiting for ${profiles[d.proposed_by || ""]?.name || "the proposer"} to decide what happens next.`}
+                </div>
+                {canAct && (
+                  <div className="row wrap" style={{ gap: 8, marginTop: 8 }}>
+                    <button className="btn sm" onClick={() => setTaskFor(d)}>
+                      ➕ Add a task
+                    </button>
+                    <button className="btn sm" onClick={() => setExtendFor(d)}>
+                      ⏳ Extend the deadline
+                    </button>
+                    <button className="btn primary sm" onClick={() => setFileFor(d)}>
+                      ✅ Close and file
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="row between vote-tally-row">
               <div className="vote-tally">
@@ -532,7 +584,37 @@ export default function DecisionsPage() {
             )}
           </div>
         );
-      })}
+        };
+        const made = visibleList.filter((d) => d.status === "decision_made");
+        const rest = visibleList.filter((d) => d.status !== "decision_made");
+        return (
+          <>
+            {made.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div className="group-head" style={{ marginBottom: 6 }}>
+                  📁 Decision made — waiting to be filed <span className="badge">{made.length}</span>
+                </div>
+                {made.map(render)}
+              </div>
+            )}
+            {rest.map(render)}
+          </>
+        );
+      })()}
+
+      {taskFor && <DecisionTaskModal key={taskFor.id} decision={taskFor} onClose={() => setTaskFor(null)} />}
+      {extendFor && (
+        <ExtendDeadlineModal key={extendFor.id} decision={extendFor} onClose={() => setExtendFor(null)} />
+      )}
+      {reopenFor && (
+        <ExtendDeadlineModal
+          key={reopenFor.id}
+          decision={reopenFor}
+          mode="reopen"
+          onClose={() => setReopenFor(null)}
+        />
+      )}
+      {fileFor && <FileDecisionModal key={fileFor.id} decision={fileFor} onClose={() => setFileFor(null)} />}
 
       {deleting && (
         <Modal

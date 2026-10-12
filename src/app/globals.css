@@ -186,6 +186,8 @@ button{ font-family:inherit; }
 /* decisions: "open" reads as "pending a vote" so it gets its own colour
    (yellow) distinct from a room's "open" (still active/available, teal). */
 .pill-pending{ background:var(--warn-soft); color:var(--warn); }
+.pill-made{ background:var(--info-soft); color:var(--info); }
+.decision-made{ border:1px solid var(--info); background:var(--info-soft); border-radius:10px; padding:10px 12px; margin:8px 0; font-size:13px; }
 .pill-passed{ background:var(--good-soft); color:var(--good); }
 .pill-failed{ background:var(--critical-soft); color:var(--critical); }
 .pill-withdrawn{ background:var(--surface-3); color:var(--muted); }

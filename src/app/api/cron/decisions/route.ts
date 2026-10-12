@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/resend";
+import { processExpiredDecisions } from "@/lib/decision-expiry";
 import { cleanUpPictures } from "@/lib/picture-cleanup";
 import { sweepQuietRooms } from "@/lib/room-sweep";
 
 // Scheduled once a day by Vercel Cron (see vercel.json). Despite the path,
 // this now covers both decisions and tasks -- same daily trigger, kept as
 // one route rather than a second cron entry for an identical schedule.
-//  1. Auto-fail any open decision whose deadline has passed without reaching
-//     quorum either way (the vote trigger only re-checks on a vote change, so
-//     nothing else catches a decision that simply times out).
+//  1. At an open decision's deadline: if an option has reached quorum (only
+//     possible once it was extended to wait for everyone) it moves to
+//     "Decision made" for its proposer to deal with; otherwise it auto-fails
+//     (the vote trigger only re-checks on a vote change, so nothing else
+//     catches a decision that simply times out).
 //  2. Email the proposer a reminder for anything open, undecided, and due in
 //     the next ~30 hours (a same-day daily cron needs slack either side of
 //     "the day before" so a run's exact time of day doesn't skip a decision).
@@ -29,45 +32,7 @@ export async function GET(request: Request) {
   const now = new Date();
   const reminderWindowEnd = new Date(now.getTime() + 30 * 60 * 60 * 1000);
 
-  const { data: expired } = await admin
-    .from("decisions")
-    .select("*, groups(name)")
-    .eq("status", "open")
-    .lt("deadline", now.toISOString());
-
-  let expiredCount = 0;
-  for (const decision of expired ?? []) {
-    await admin
-      .from("decisions")
-      .update({ status: "failed", closed_at: now.toISOString(), resolution_notified: true })
-      .eq("id", decision.id)
-      .eq("status", "open"); // guard against a race with the vote trigger
-    expiredCount++;
-
-    if (decision.proposed_by) {
-      const { data: proposer } = await admin
-        .from("profiles")
-        .select("email")
-        .eq("id", decision.proposed_by)
-        .single();
-      if (proposer?.email) {
-        await sendEmail(
-          proposer.email,
-          `Motion failed (deadline passed): ${decision.title}`,
-          `<p>Your motion in <strong>${decision.groups?.name ?? "your group"}</strong> didn't reach quorum before its deadline and has been marked <strong>failed</strong>.</p>
-           <p><strong>${decision.title}</strong></p>
-           <blockquote>${decision.motion_text}</blockquote>`
-        );
-      }
-      await admin.from("notifications").insert({
-        member_id: decision.proposed_by,
-        kind: "decision_resolved",
-        title: `Motion failed (deadline passed): ${decision.title}`,
-        body: `In ${decision.groups?.name ?? "your group"}`,
-        decision_id: decision.id,
-      });
-    }
-  }
+  const { expiredCount, madeCount } = await processExpiredDecisions(admin, now);
 
   const { data: dueSoon } = await admin
     .from("decisions")
@@ -199,6 +164,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     ok: true,
+    decisionsMade: madeCount,
     quietRooms,
     pictures,
     expiredCount,

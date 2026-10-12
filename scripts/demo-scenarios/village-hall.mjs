@@ -102,6 +102,12 @@ export default {
       title: "Preferred kitchen contractor", text: "Which quote should we take forward as the basis for our grant applications?",
       options: ["£21,400 quote", "£23,750 quote", "£27,900 quote", "abstain"],
       votes: [["Derek", "£23,750 quote"], ["Peter", "£23,750 quote"], ["Alan", "£21,400 quote"]] },
+    // Reached its quorum; waiting in the "Decision made" folder for Nisha to
+    // file it or turn it into a task.
+    { group: "events", room: "eventsRoom", by: "Nisha", quorum: 3, deadline: 4, created: -2,
+      title: "Quiz night tickets at £8",
+      text: "That quiz night tickets are £8 a head, including supper, with tables of up to six.",
+      votes: [["Nisha", "yes"], ["Emma", "yes"], ["Linda", "yes"]] },
     { key: "fair", group: "events", room: "eventsRoom", by: "Nisha", quorum: 3, deadline: -4, created: -11, closedDaysAgo: 8,
       title: "Christmas fair stall fee",
       text: "That stallholders pay £15 a table at the Christmas fair, with charity stalls free.",

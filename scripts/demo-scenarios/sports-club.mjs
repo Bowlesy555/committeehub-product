@@ -100,6 +100,12 @@ export default {
       title: "Gala ticket price", text: "What should a gala ticket cost this year?",
       options: ["£35", "£40", "£45", "abstain"],
       votes: [["Tom", "£40"], ["Aisha", "£40"], ["Sophie", "£35"]] },
+    // Reached its quorum; waiting in the "Decision made" folder for Tom to
+    // file it or turn it into a task.
+    { group: "clubhouse", room: "refurb", topic: "grant", by: "Tom", quorum: 3, deadline: 3, created: -2,
+      title: "Accept the £14,200 roofing quote",
+      text: "That we accept the lowest roofing quote of £14,200, with work to start in October, subject to the grant decision.",
+      votes: [["Tom", "yes"], ["George", "yes"], ["Chris", "yes"]] },
     { key: "marquee", group: "gala", room: "galaRoom", by: "David", quorum: 3, deadline: -3, created: -9, closedDaysAgo: 6,
       title: "Book the marquee for 17 July",
       text: "That we accept the marquee quote of £1,850 and pay the 25% deposit now to secure the date.",

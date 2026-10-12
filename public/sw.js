@@ -40,7 +40,7 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       const visible = list.some((c) => c.visibilityState === "visible");
-      if (visible && !ios) return undefined;
+      if (visible && !ios && !data.force) return undefined;
       return self.registration.showNotification(title, {
         body: data.body || "",
         icon: "/icon-192.png",
