@@ -93,6 +93,20 @@ if (existingGroups.length && !process.argv.includes("--reset")) {
   process.exit(1);
 }
 console.log(`Seeding the "${scenarioName}" demo into ${url}`);
+
+// Rebuilding creates dozens of messages, motions and tasks at once. Each
+// would send a phone notification to anyone who has them switched on, so
+// the app's address is taken out of the database while this runs (without
+// it the database tells nobody) and put back at the end.
+const { data: appUrlRow } = await db.from("app_settings").select("value").eq("key", "app_url").maybeSingle();
+if (appUrlRow) await db.from("app_settings").delete().eq("key", "app_url");
+async function restoreAppUrl() {
+  if (appUrlRow) await db.from("app_settings").upsert({ key: "app_url", value: appUrlRow.value }, { onConflict: "key" });
+}
+process.on("exit", (code) => {
+  if (code !== 0 && appUrlRow) console.error(`
+Stopped early. Run it again, or the demo's notifications stay off (address was ${appUrlRow.value}).`);
+});
 await run("Clearing groups", db.from("groups").delete().not("id", "is", null));
 await run("Clearing private chats", db.from("spaces").delete().not("id", "is", null));
 await run("Clearing the library", db.from("library_items").delete().not("id", "is", null));
@@ -384,6 +398,8 @@ await run(
     }))
   )
 );
+
+await restoreAppUrl();
 
 console.log(
   `Done: ${scenario.people.length} members, ${scenario.groups.length} groups, ${scenario.rooms.length} rooms, ` +
