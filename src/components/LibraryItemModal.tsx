@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useAppData } from "@/lib/data-store";
 import { useToast } from "@/lib/toast";
-import { isGoogleDriveUrl } from "@/lib/documents";
+import { isFileLink } from "@/lib/documents";
 import { Modal } from "@/components/Modal";
 import type { LibraryItem } from "@/types";
 
@@ -65,11 +65,11 @@ export function LibraryItemModal({
 
   // Groups the item is shared with that I'm not in -- I can't change those.
   const hiddenShares = currentGroups.filter((g) => !myGroupSet.has(g)).length;
-  const urlValid = !url.trim() || isGoogleDriveUrl(url);
+  const urlValid = !url.trim() || isFileLink(url);
   // An item must stay shared with at least one group (an edit that can only
   // touch my groups may still leave it shared with others).
   const canSave =
-    !!title.trim() && isGoogleDriveUrl(url) && (shareWith.length > 0 || hiddenShares > 0);
+    !!title.trim() && isFileLink(url) && (shareWith.length > 0 || hiddenShares > 0);
 
   async function save() {
     if (!userId || !canSave) return;
@@ -160,18 +160,18 @@ export function LibraryItemModal({
         />
       </div>
       <div className="field">
-        <label>Google Drive link only</label>
+        <label>Link to the file</label>
         <input
           className="input"
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://drive.google.com/… or https://docs.google.com/…"
+          placeholder="https://…"
         />
         {!urlValid && (
           <span className="help" style={{ color: "var(--critical)" }}>
-            That doesn&apos;t look like a Google Drive link — copy the &ldquo;Share&rdquo; link
-            from Google Drive, Docs, Sheets or Slides.
+            That doesn&apos;t look like a link — copy the &ldquo;Share&rdquo; link from wherever
+            the file is kept. It should start with https://
           </span>
         )}
       </div>

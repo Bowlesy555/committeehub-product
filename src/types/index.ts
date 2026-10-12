@@ -222,9 +222,9 @@ export interface Meeting {
   created_at: string;
 }
 
-// A pointer to a file already stored in Google Drive -- never the file
-// itself. See the baseline migration in supabase/migrations for why (Supabase free-tier egress, not
-// storage space, is the constraint that keeps Drive as the real file store).
+// A pointer to a file kept wherever the committee already stores its files
+// (Google Drive, OneDrive, Dropbox...) -- never the file itself. Supabase
+// egress, not storage space, is why documents stay as links.
 export interface Document {
   id: string;
   group_id: string;

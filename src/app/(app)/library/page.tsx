@@ -92,7 +92,7 @@ export default function LibraryPage() {
     i.added_by === userId || (groupsOf[i.id] || []).some((g) => isGroupAdmin(g));
 
   async function remove(i: LibraryItem) {
-    if (!window.confirm(`Remove “${i.title}” from the Library? The file in Google Drive isn't touched.`))
+    if (!window.confirm(`Remove “${i.title}” from the Library? The file itself isn't touched.`))
       return;
     const { error } = await supabase.from("library_items").delete().eq("id", i.id);
     if (error) showToast(error.message);
@@ -112,7 +112,7 @@ export default function LibraryPage() {
       <p className="section-desc">
         Reference documents that a group should all have to hand — rules, policies, forms,
         templates. Each item is shared with the groups you choose, and only their members can
-        see it. Links go to Google Drive, so people still need Drive access to open the file.
+        see it. Each item is a link to the file where it is kept, so people still need access to the file to open it.
       </p>
 
       {mine.length > 0 && (

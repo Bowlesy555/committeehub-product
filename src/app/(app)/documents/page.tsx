@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAppData } from "@/lib/data-store";
 import { useToast } from "@/lib/toast";
 import { timeAgo } from "@/lib/format";
-import { isGoogleDriveUrl } from "@/lib/documents";
+import { isFileLink } from "@/lib/documents";
 import { roomLink } from "@/lib/rooms";
 import { Modal } from "@/components/Modal";
 import { LibraryItemModal } from "@/components/LibraryItemModal";
@@ -61,10 +61,10 @@ export default function DocumentsPage() {
     setCreating(true);
   }
 
-  const urlValid = !url.trim() || isGoogleDriveUrl(url);
+  const urlValid = !url.trim() || isFileLink(url);
 
   async function addDocument() {
-    if (!title.trim() || !groupId || !isGoogleDriveUrl(url) || !userId) return;
+    if (!title.trim() || !groupId || !isFileLink(url) || !userId) return;
     setSaving(true);
     const { error } = await supabase.from("documents").insert({
       group_id: groupId,
@@ -115,7 +115,7 @@ export default function DocumentsPage() {
   }
 
   async function saveEdit() {
-    if (!editing || !editTitle.trim() || !isGoogleDriveUrl(editUrl)) return;
+    if (!editing || !editTitle.trim() || !isFileLink(editUrl)) return;
     setEditSaving(true);
     const { error } = await supabase
       .from("documents")
@@ -143,8 +143,9 @@ export default function DocumentsPage() {
         </button>
       </div>
       <p className="section-desc">
-        Links to files kept in Google Drive — {PRODUCT_NAME} only stores where to find them, not
-        the files themselves. Anyone opening a link will still need Google Drive access to it.
+        Links to files kept wherever your committee already stores them, such as Google Drive,
+        OneDrive, SharePoint or Dropbox — {PRODUCT_NAME} only stores where to find them, not the
+        files themselves. Anyone opening a link will still need access to the file.
       </p>
 
       {byGroup.length === 0 && (
@@ -239,7 +240,7 @@ export default function DocumentsPage() {
               <button
                 className="btn primary"
                 onClick={saveEdit}
-                disabled={editSaving || !editTitle.trim() || !isGoogleDriveUrl(editUrl)}
+                disabled={editSaving || !editTitle.trim() || !isFileLink(editUrl)}
               >
                 {editSaving ? "Saving…" : "Save"}
               </button>
@@ -256,16 +257,16 @@ export default function DocumentsPage() {
             />
           </div>
           <div className="field">
-            <label>Google Drive link only</label>
+            <label>Link to the file</label>
             <input
               className="input"
               type="url"
               value={editUrl}
               onChange={(e) => setEditUrl(e.target.value)}
             />
-            {editUrl.trim() && !isGoogleDriveUrl(editUrl) && (
+            {editUrl.trim() && !isFileLink(editUrl) && (
               <span className="help" style={{ color: "var(--critical)" }}>
-                That doesn&apos;t look like a Google Drive link.
+                That doesn&apos;t look like a link. It should start with https://
               </span>
             )}
           </div>
@@ -284,7 +285,7 @@ export default function DocumentsPage() {
               <button
                 className="btn primary"
                 onClick={addDocument}
-                disabled={saving || !title.trim() || !groupId || !isGoogleDriveUrl(url)}
+                disabled={saving || !title.trim() || !groupId || !isFileLink(url)}
               >
                 {saving ? "Adding…" : "Add"}
               </button>
@@ -316,23 +317,24 @@ export default function DocumentsPage() {
             />
           </div>
           <div className="field">
-            <label>Google Drive link only</label>
+            <label>Link to the file</label>
             <input
               className="input"
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://drive.google.com/… or https://docs.google.com/…"
+              placeholder="https://…"
             />
             {!urlValid && (
               <span className="help" style={{ color: "var(--critical)" }}>
-                That doesn&apos;t look like a Google Drive link — copy the &ldquo;Share&rdquo;
-                link from Google Drive, Docs, Sheets or Slides.
+                That doesn&apos;t look like a link — copy the &ldquo;Share&rdquo; link from
+                wherever the file is kept. It should start with https://
               </span>
             )}
             <span className="help">
-              This only stores the link. The file itself stays in Google Drive, and it must
-              already be shared with whoever needs to open it from here.
+              This only stores the link. The file itself stays where it is (Google Drive,
+              OneDrive, Dropbox and so on), and it must already be shared with whoever needs
+              to open it from here.
             </span>
           </div>
         </Modal>

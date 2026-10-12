@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAppData } from "@/lib/data-store";
 import { useToast } from "@/lib/toast";
-import { isGoogleDriveUrl } from "@/lib/documents";
+import { isFileLink } from "@/lib/documents";
 import type { DocumentLink } from "@/types";
 
 /** What a document can be attached to: a room (optionally one of its topics), a task, or a decision. */
@@ -22,7 +22,7 @@ export function linkMatches(l: DocumentLink, t: DocTarget): boolean {
 }
 
 /** The documents attached to something, as clickable chips, with an inline
- *  panel to attach another (an existing Documents-tab link, or a new Drive link). */
+ *  panel to attach another (an existing Documents-tab link, or a new link). */
 export function AttachedDocuments({
   groupId,
   target,
@@ -47,7 +47,7 @@ export function AttachedDocuments({
   const available = Object.values(documents)
     .filter((d) => d.group_id === groupId && !linkedIds.has(d.id))
     .sort((a, b) => a.title.localeCompare(b.title));
-  const newValid = !!title.trim() && isGoogleDriveUrl(url);
+  const newValid = !!title.trim() && isFileLink(url);
 
   if (readOnly && links.length === 0) return null;
 
@@ -150,17 +150,17 @@ export function AttachedDocuments({
                 />
               </div>
               <div className="field">
-                <label>Google Drive link only</label>
+                <label>Link to the file</label>
                 <input
                   className="input"
                   type="url"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://drive.google.com/… or https://docs.google.com/…"
+                  placeholder="https://…"
                 />
-                {url.trim() && !isGoogleDriveUrl(url) && (
+                {url.trim() && !isFileLink(url) && (
                   <span className="help" style={{ color: "var(--critical)" }}>
-                    That doesn&apos;t look like a Google Drive link.
+                    That doesn&apos;t look like a link. It should start with https://
                   </span>
                 )}
                 <span className="help">
