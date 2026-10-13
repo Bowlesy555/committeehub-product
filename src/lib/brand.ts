@@ -9,7 +9,8 @@
 
 export const PRODUCT_NAME = "CommitteeHub";
 
-const DEFAULT_ACCENT = "#2E6F5C";
+// CommitteeHub's own navy, used until a committee gives its colour.
+const DEFAULT_ACCENT = "#16356B";
 
 function clean(v: string | undefined): string {
   return (v ?? "").trim();
@@ -38,7 +39,8 @@ export const brand = {
   accent: accentEnv ?? DEFAULT_ACCENT,
   hasCustomAccent: accentEnv !== null,
   accentDark: hex(process.env.NEXT_PUBLIC_BRAND_ACCENT_DARK),
-  logoUrl: clean(process.env.NEXT_PUBLIC_BRAND_LOGO_URL) || null,
+  // CommitteeHub's own mark until a committee supplies its logo.
+  logoUrl: clean(process.env.NEXT_PUBLIC_BRAND_LOGO_URL) || "/logo.svg",
   // For a logo with an opaque white background, which needs a white badge
   // behind it rather than sitting directly on the topbar.
   logoBadge: clean(process.env.NEXT_PUBLIC_BRAND_LOGO_BADGE) === "true",
@@ -93,12 +95,11 @@ function inkFor(hex: string): string {
 }
 
 /**
- * CSS overriding globals.css's accent tokens with this deployment's colour,
- * or null when it uses the default. The soft/strong shades and the dark-mode
- * set are derived from the one accent so a committee only supplies one colour.
+ * CSS setting the accent tokens from this deployment's colour (or the
+ * default). The soft/strong shades and the dark-mode set are derived from
+ * the one accent, so a committee only supplies one colour.
  */
-export function brandThemeCss(): string | null {
-  if (!brand.hasCustomAccent) return null;
+export function brandThemeCss(): string {
   const light = brand.accent;
   const dark = brand.accentDark ?? mix(light, "#FFFFFF", 0.45);
   const tokens = (accent: string, soft: string, strong: string) =>

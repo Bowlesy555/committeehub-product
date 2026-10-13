@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>CommitteeHub</title>
+  <path d="M108.1 133.4 A196 196 0 0 1 185.8 79.0" fill="none" stroke="#1BA7BD" stroke-width="20" stroke-linecap="round"/>
+  <path d="M326.2 79.0 A196 196 0 0 1 403.9 133.4" fill="none" stroke="#1BA7BD" stroke-width="20" stroke-linecap="round"/>
+  <path d="M60.5 275.7 A196 196 0 0 0 130.0 412.1" fill="none" stroke="#1BA7BD" stroke-width="20" stroke-linecap="round"/><circle cx="130.0" cy="412.1" r="18" fill="#1BA7BD" stroke="#FFFFFF" stroke-width="7"/>
+  <path d="M450.1 289.3 A196 196 0 0 1 382.0 412.1" fill="none" stroke="#1BA7BD" stroke-width="20" stroke-linecap="round"/><circle cx="450.1" cy="289.3" r="18" fill="#1BA7BD" stroke="#FFFFFF" stroke-width="7"/>
+  <path d="M194 144 L194 112 Q194 82 224 82 L288 82 Q318 82 318 112 L318 144 Q318 152 310 152 L202 152 Q194 152 194 144 Z" fill="#16356B"/><circle cx="256" cy="51" r="33" fill="#16356B" stroke="#FFFFFF" stroke-width="9"/>
+  <path d="M42 222 L42 190 Q42 160 72 160 L136 160 Q166 160 166 190 L166 222 Q166 230 158 230 L50 230 Q42 230 42 222 Z" fill="#16356B"/><circle cx="104" cy="129" r="33" fill="#16356B" stroke="#FFFFFF" stroke-width="9"/>
+  <path d="M346 222 L346 190 Q346 160 376 160 L440 160 Q470 160 470 190 L470 222 Q470 230 462 230 L354 230 Q346 230 346 222 Z" fill="#1BA7BD"/><circle cx="408" cy="129" r="33" fill="#1BA7BD" stroke="#FFFFFF" stroke-width="9"/>
+  <rect x="170" y="212" width="172" height="232" rx="26" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="34"/>
+  <rect x="170" y="212" width="172" height="232" rx="26" fill="#FFFFFF" stroke="#16356B" stroke-width="20"/>
+  <line x1="208" y1="270" x2="304" y2="270" stroke="#16356B" stroke-width="11" stroke-linecap="round"/>
+  <line x1="208" y1="308" x2="304" y2="308" stroke="#16356B" stroke-width="11" stroke-linecap="round"/>
+  <line x1="208" y1="346" x2="276" y2="346" stroke="#16356B" stroke-width="11" stroke-linecap="round"/>
+  <line x1="208" y1="384" x2="276" y2="384" stroke="#16356B" stroke-width="11" stroke-linecap="round"/>
+  <circle cx="350" cy="368" r="50" fill="#F7A429" stroke="#FFFFFF" stroke-width="8"/>
+  <path d="M374 344 L402 314" fill="none" stroke="#F7A429" stroke-width="20" stroke-linecap="round"/>
+  <path d="M327 368 L345 386 L376 350" fill="none" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
