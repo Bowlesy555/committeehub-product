@@ -186,6 +186,38 @@ by any route. Nothing is deleted. Recording the payment unlocks it at once.
 A table added by a later migration must be given the lock too: re-run the
 last block of `20261013000000_billing.sql` after adding it.
 
+## Giving a committee a copy of its information, and closing it
+
+```
+npm run export -- <name>
+```
+
+saves a complete copy in `customers/exports/<name>-<date>/`, with a `.zip`
+beside it to send: a spreadsheet (`.csv`) for each kind of record with
+people and groups shown by name, the pictures from messages, a `README.txt`
+explaining each file, and `backup.json` for setting the system up again. It
+only reads; nothing is changed. Use it whenever a committee asks for its
+information, and before closing one.
+
+To close a committee (they have left, or 10 working days have passed since
+the lock without payment):
+
+1. Run the export and send the committee's administrator the zip by a
+   secure link (for example a OneDrive link that expires), not as a plain
+   attachment. It holds personal information.
+2. Supabase: **Project Settings > General > Delete project**.
+3. Vercel: the project's **Settings > Delete Project**. If they used their
+   own domain, tell them the DNS record can be removed.
+4. Resend, if they had their own sending domain: remove it.
+5. Move `customers/<name>.*` into `customers/closed/`, and delete the keys
+   file contents if you like; the keys die with the project.
+6. Delete your copy of the export within 30 days, as the contract says.
+7. Mark them "Closed" in the customers spreadsheet.
+
+Bringing a closed committee back means a new setup from scratch plus
+loading `backup.json`; there is no command for that yet. Build it the first
+time it is needed.
+
 ## Phone and computer notifications
 
 Members can switch on alerts for their own phone or computer from the bell

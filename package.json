@@ -10,7 +10,8 @@
     "demo:sports": "node --env-file=customers/sports.env scripts/seed-demo.mjs --scenario sports-club --reset",
     "demo:village-hall": "node --env-file=customers/villagehall.env scripts/seed-demo.mjs --scenario village-hall --reset",
     "customers": "node scripts/billing.mjs list",
-    "paid": "node scripts/billing.mjs paid"
+    "paid": "node scripts/billing.mjs paid",
+    "export": "node scripts/export-customer.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
