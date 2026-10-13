@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "demo:sports": "node --env-file=customers/sports.env scripts/seed-demo.mjs --scenario sports-club --reset",
-    "demo:village-hall": "node --env-file=customers/villagehall.env scripts/seed-demo.mjs --scenario village-hall --reset"
+    "demo:village-hall": "node --env-file=customers/villagehall.env scripts/seed-demo.mjs --scenario village-hall --reset",
+    "customers": "node scripts/billing.mjs list",
+    "paid": "node scripts/billing.mjs paid"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AppDataProvider, useAppData } from "@/lib/data-store";
@@ -8,6 +8,7 @@ import { ToastProvider, useToast } from "@/lib/toast";
 import { initials, colorFor } from "@/lib/format";
 import { roleLabelsFor } from "@/lib/roles";
 import { brand } from "@/lib/brand";
+import { billingNotice, SUPPORT_EMAIL, type BillingStatus } from "@/lib/billing";
 import { Modal } from "@/components/Modal";
 import { PushSettings } from "@/components/PushSettings";
 
@@ -47,6 +48,55 @@ function Shell({ children }: { children: React.ReactNode }) {
   const [pushOpen, setPushOpen] = useState(false);
   const [pin, setPin] = useState("");
   const [savingPin, setSavingPin] = useState(false);
+  // undefined until it has been asked for. A deployment whose database
+  // doesn't have billing yet answers with an error, treated as "not started".
+  const [billing, setBilling] = useState<BillingStatus | undefined>(undefined);
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    supabase.rpc("billing_status").then(({ data }) => {
+      if (!cancelled) setBilling((data as BillingStatus | null) ?? { state: "none" });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, supabase]);
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
+
+  // While locked the database gives nothing back to anyone, so this comes
+  // before any check that depends on the member's own data having loaded.
+  if (userId && billing?.state === "locked") {
+    return (
+      <div className="empty" style={{ paddingTop: 80, maxWidth: 460, margin: "0 auto" }}>
+        <div className="big">🔒</div>
+        <p>
+          <strong>{brand.appName} is locked.</strong>
+        </p>
+        <p>
+          {billing.plan === "trial"
+            ? "The free trial has ended."
+            : "The subscription payment hasn't been received."}{" "}
+          Nothing has been deleted. Access comes back for everyone as soon as payment is recorded.
+        </p>
+        <p>
+          Please speak to your committee&apos;s administrator or treasurer, or write to{" "}
+          <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
+        </p>
+        <button className="btn" onClick={signOut}>
+          Sign out
+        </button>
+      </div>
+    );
+  }
+
+  if (userId && billing === undefined) {
+    return <div className="empty" style={{ paddingTop: 80 }}>Loading {brand.appName}…</div>;
+  }
 
   if (!authReady || (userId && !dataReady)) {
     return <div className="empty" style={{ paddingTop: 80 }}>Loading {brand.appName}…</div>;
@@ -81,10 +131,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         ]
       : TABS;
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    router.push("/login");
-  }
+  const notice = billing ? billingNotice(billing) : null;
 
   async function savePin() {
     if (!/^\d{6}$/.test(pin)) {
@@ -163,7 +210,18 @@ function Shell({ children }: { children: React.ReactNode }) {
           );
         })}
       </div>
-      <div className={`container${pathname === "/spaces" ? " wide" : ""}`}>{children}</div>
+      <div className={`container${pathname === "/spaces" ? " wide" : ""}`}>
+        {notice && (
+          <div className="banner demo" style={{ marginBottom: 14 }}>
+            <span>💳</span>
+            <span>
+              {notice} If you have already paid, thank you: this notice clears once the payment
+              is recorded. Only admins see this.
+            </span>
+          </div>
+        )}
+        {children}
+      </div>
 
       {pushOpen && <PushSettings onClose={() => setPushOpen(false)} />}
 

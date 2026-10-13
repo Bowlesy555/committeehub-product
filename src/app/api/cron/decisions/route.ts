@@ -4,6 +4,8 @@ import { sendEmail } from "@/lib/resend";
 import { processExpiredDecisions } from "@/lib/decision-expiry";
 import { cleanUpPictures } from "@/lib/picture-cleanup";
 import { sweepQuietRooms } from "@/lib/room-sweep";
+import { sendPushToMembers } from "@/lib/push";
+import { billingReminderFor, type BillingStatus } from "@/lib/billing";
 
 // Scheduled once a day by Vercel Cron (see vercel.json). Despite the path,
 // this now covers both decisions and tasks -- same daily trigger, kept as
@@ -22,6 +24,9 @@ import { sweepQuietRooms } from "@/lib/room-sweep";
 //     and any stray files nothing refers to.
 //  5. Ask the creator of any open room with no messages for 30+ days whether it
 //     should be closed (each room is asked at most once per 30 days).
+//  0. Before any of that: if the subscription has lapsed and the system is
+//     locked, do nothing at all; otherwise, on a reminder day, tell the
+//     admins that a payment is coming up or overdue.
 export async function GET(request: Request) {
   const auth = request.headers.get("authorization");
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -31,6 +36,28 @@ export async function GET(request: Request) {
   const admin = createAdminClient();
   const now = new Date();
   const reminderWindowEnd = new Date(now.getTime() + 30 * 60 * 60 * 1000);
+
+  // An error here means this database has no billing yet: carry on as normal.
+  const { data: billingData } = await admin.rpc("billing_state");
+  const billing = (billingData as BillingStatus | null) ?? { state: "none" };
+  if (billing.state === "locked") {
+    return NextResponse.json({ ok: true, locked: true });
+  }
+  let billingReminder = false;
+  const reminder = billingReminderFor(billing, now.toISOString().slice(0, 10));
+  if (reminder) {
+    const { data: admins } = await admin.from("profiles").select("id, email").eq("is_global_admin", true);
+    for (const person of admins ?? []) {
+      if (person.email) await sendEmail(person.email, reminder.subject, `<p>${reminder.body}</p>`);
+    }
+    await sendPushToMembers(admin, (admins ?? []).map((a) => a.id), {
+      title: reminder.subject,
+      body: reminder.body,
+      url: "/dashboard",
+      tag: "billing",
+    });
+    billingReminder = true;
+  }
 
   const { expiredCount, madeCount } = await processExpiredDecisions(admin, now);
 
@@ -164,6 +191,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     ok: true,
+    billingReminder,
     decisionsMade: madeCount,
     quietRooms,
     pictures,

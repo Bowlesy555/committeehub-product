@@ -134,6 +134,58 @@ Sign in as the first admin with the email and PIN from the JSON, change the
 PIN (🔑 in the topbar), create the main committee group from the Admin tab,
 and add the members.
 
+## Billing: paid-until dates, reminders and the lock
+
+Each committee's database holds one "paid until" date. Only you can set it,
+from this machine; no member of the committee can see or change the row.
+The demos have no date and never lock.
+
+```
+npm run customers
+```
+
+lists every committee in `customers/` with its plan, date and whether it is
+paid up, overdue or locked.
+
+```
+npm run paid -- <name>
+```
+
+records a payment. It moves the date on by a year (annual) or a month
+(monthly), counted from the old date and not from today, so a late payer
+doesn't gain days. Add `--undo` to put the last change back.
+
+Starting a plan, or moving a trial onto a paid plan:
+
+```
+npm run paid -- <name> --start trial
+npm run paid -- <name> --start annual --until 2027-11-01
+npm run paid -- <name> --start monthly --until 2026-12-01
+```
+
+A trial runs 14 days from today unless you give `--until`. For annual, the
+date is the renewal date their next invoice is due on. For monthly, it is
+the date their next instalment is due. `--off` removes billing altogether.
+
+What the committee sees:
+
+| Plan | Notice to admins in the app | Phone alert and email to admins | Locks |
+|---|---|---|---|
+| Annual | From 30 days before renewal | 14, 7 and 1 day before | The day after the renewal date |
+| Monthly | Only once an instalment is missed | The day after it was due, and 5 working days after | More than 10 working days late |
+| Trial | Throughout | 3 and 1 day before it ends | The day after it ends |
+
+The phone alert needs notifications switched on by that admin; the email
+needs `RESEND_API_KEY` (step 7). Invoices, and the 60-day and 30-day
+emails, come from you, not from the app.
+
+When locked, every member who signs in sees a "locked" page and the
+database refuses all reading and writing, so nothing can be seen or changed
+by any route. Nothing is deleted. Recording the payment unlocks it at once.
+
+A table added by a later migration must be given the lock too: re-run the
+last block of `20261013000000_billing.sql` after adding it.
+
 ## Phone and computer notifications
 
 Members can switch on alerts for their own phone or computer from the bell
