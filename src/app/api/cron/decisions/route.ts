@@ -24,6 +24,8 @@ import { billingReminderFor, type BillingStatus } from "@/lib/billing";
 //     and any stray files nothing refers to.
 //  5. Ask the creator of any open room with no messages for 30+ days whether it
 //     should be closed (each room is asked at most once per 30 days).
+//  6. Remove any "Download everything" copy an admin made more than an hour
+//     ago; its download link only lasted ten minutes anyway.
 //  0. Before any of that: if the subscription has lapsed and the system is
 //     locked, do nothing at all; otherwise, on a reminder day, tell the
 //     admins that a payment is coming up or overdue.
@@ -189,8 +191,21 @@ export async function GET(request: Request) {
     quietRooms = { error: e instanceof Error ? e.message : "room sweep failed" };
   }
 
+  let exportsRemoved = 0;
+  try {
+    const { data: copies } = await admin.storage.from("exports").list();
+    const stale = (copies ?? []).filter(
+      (f) => f.created_at && new Date(f.created_at).getTime() < now.getTime() - 60 * 60 * 1000
+    );
+    if (stale.length) await admin.storage.from("exports").remove(stale.map((f) => f.name));
+    exportsRemoved = stale.length;
+  } catch {
+    // no bucket yet (nobody has downloaded a copy): nothing to do
+  }
+
   return NextResponse.json({
     ok: true,
+    exportsRemoved,
     billingReminder,
     decisionsMade: madeCount,
     quietRooms,

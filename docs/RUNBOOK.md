@@ -188,16 +188,23 @@ last block of `20261013000000_billing.sql` after adding it.
 
 ## Giving a committee a copy of its information, and closing it
 
+A committee's super admins can take a complete copy themselves at any
+time: **Admin tab > Download everything**. It is a `.zip` with a
+spreadsheet (`.csv`) for each kind of record, people and groups shown by
+name, the pictures from messages, a `README.txt` explaining each file, and
+`backup.json` for setting the system up again. The copy is held in a
+private storage bucket (`exports`) only long enough to download: the link
+lasts ten minutes and the daily job deletes the file after an hour.
+
+You can make exactly the same copy from this machine, for a committee that
+is leaving or is locked:
+
 ```
 npm run export -- <name>
 ```
 
-saves a complete copy in `customers/exports/<name>-<date>/`, with a `.zip`
-beside it to send: a spreadsheet (`.csv`) for each kind of record with
-people and groups shown by name, the pictures from messages, a `README.txt`
-explaining each file, and `backup.json` for setting the system up again. It
-only reads; nothing is changed. Use it whenever a committee asks for its
-information, and before closing one.
+saves `customers/exports/<name>-<date>.zip`. It only reads; nothing is
+changed.
 
 To close a committee (they have left, or 10 working days have passed since
 the lock without payment):

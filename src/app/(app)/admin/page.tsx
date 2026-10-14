@@ -8,6 +8,7 @@ import { roleLabelsFor } from "@/lib/roles";
 import { Modal } from "@/components/Modal";
 import { LoginLog } from "@/components/LoginLog";
 import { PictureRetention } from "@/components/PictureRetention";
+import { DataDownload } from "@/components/DataDownload";
 import { StartGroup } from "@/components/StartGroup";
 import type { Capacity, GroupKind } from "@/types";
 
@@ -738,6 +739,8 @@ export default function AdminPage() {
           <PictureRetention />
 
           <LoginLog />
+
+          <DataDownload />
 
           <div className="section-title">
             <h2>Roles</h2>
