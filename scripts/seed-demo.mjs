@@ -309,15 +309,19 @@ if (realIds.length && scenario.privateChat) {
 // database does this), exactly as it would in real use. One with
 // closedDaysAgo is then filed as passed or failed, as its proposer would;
 // one without is left waiting in the Decision made folder.
+// by: "guest" makes the guest sign-in the proposer, so a visitor trying the
+// demo can act on a motion in "Decision made" themselves (only the proposer
+// or an admin can). Skipped when the demo has no guest.
 const decisions = {};
 for (const d of scenario.decisions) {
+  if (d.by === "guest" && !guestId) continue;
   const [row] = await run(
     `Creating motion ${d.title}`,
     db.from("decisions").insert({
       group_id: groups[d.group],
       space_id: d.room ? rooms[d.room] : null,
       topic_id: d.topic ? topics[d.topic] : null,
-      proposed_by: who(d.by),
+      proposed_by: d.by === "guest" ? guestId : who(d.by),
       quorum: d.quorum,
       title: d.title,
       motion_text: d.text,

@@ -108,6 +108,12 @@ export default {
       title: "Quiz night tickets at £8",
       text: "That quiz night tickets are £8 a head, including supper, with tables of up to six.",
       votes: [["Nisha", "yes"], ["Emma", "yes"], ["Linda", "yes"]] },
+    // Proposed by the guest sign-in, so a visitor trying the demo has a
+    // motion of their own waiting in "Decision made" to act on.
+    { group: "events", room: "eventsRoom", by: "guest", quorum: 3, deadline: 5, created: -1,
+      title: "Add a raffle to the Christmas fair",
+      text: "That the Christmas fair includes a raffle, with prizes donated by local businesses and tickets at £1 each.",
+      votes: [["Nisha", "yes"], ["Emma", "yes"], ["Susan", "yes"]] },
     { key: "fair", group: "events", room: "eventsRoom", by: "Nisha", quorum: 3, deadline: -4, created: -11, closedDaysAgo: 8,
       title: "Christmas fair stall fee",
       text: "That stallholders pay £15 a table at the Christmas fair, with charity stalls free.",

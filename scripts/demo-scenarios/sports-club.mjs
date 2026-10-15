@@ -106,6 +106,12 @@ export default {
       title: "Accept the £14,200 roofing quote",
       text: "That we accept the lowest roofing quote of £14,200, with work to start in October, subject to the grant decision.",
       votes: [["Tom", "yes"], ["George", "yes"], ["Chris", "yes"]] },
+    // Proposed by the guest sign-in, so a visitor trying the demo has a
+    // motion of their own waiting in "Decision made" to act on.
+    { group: "clubhouse", room: "refurb", by: "guest", quorum: 3, deadline: 4, created: -1,
+      title: "Fit a defibrillator outside the clubhouse",
+      text: "That we fit a public-access defibrillator on the outside wall of the clubhouse as part of the refurbishment, at a cost of up to £1,400.",
+      votes: [["Tom", "yes"], ["George", "yes"], ["Hannah", "yes"]] },
     { key: "marquee", group: "gala", room: "galaRoom", by: "David", quorum: 3, deadline: -3, created: -9, closedDaysAgo: 6,
       title: "Book the marquee for 17 July",
       text: "That we accept the marquee quote of £1,850 and pay the 25% deposit now to secure the date.",
