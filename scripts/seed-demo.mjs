@@ -224,7 +224,7 @@ if (guestEmail && /^\d{6}$/.test(guestPin)) {
   }
   await run(
     "Resetting the guest profile",
-    db.from("profiles").update({ name: "Guest Visitor", is_global_admin: false, capacity: "available" }).eq("id", guestId)
+    db.from("profiles").update({ name: "Guest Visitor", is_global_admin: false, capacity: "available", share_activity: true }).eq("id", guestId)
   );
 }
 
