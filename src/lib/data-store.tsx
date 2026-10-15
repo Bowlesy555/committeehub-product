@@ -32,6 +32,7 @@ import type {
   Space,
   SpaceParticipant,
   SpaceOwner,
+  MessageReaction,
   SpaceRead,
   SpaceTopic,
   LibraryItem,
@@ -171,6 +172,7 @@ interface AppDataValue {
   spaces: Record<string, Space>;
   spaceParticipants: Record<string, SpaceParticipant>;
   spaceOwners: Record<string, SpaceOwner>;
+  messageReactions: Record<string, MessageReaction>;
   spaceTopics: Record<string, SpaceTopic>;
   decisions: Record<string, Decision>;
   votes: Record<string, Vote>;
@@ -253,6 +255,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     supabase,
     "space_owners",
     (r) => `${r.space_id}:${r.member_id}`
+  );
+  const messageReactions = useRealtimeByCompositeKey<MessageReaction>(
+    supabase,
+    "message_reactions",
+    (r) => `${r.message_id}:${r.member_id}:${r.reaction}`
   );
   const spaceTopics = useRealtimeById<SpaceTopic>(supabase, "space_topics");
   const decisions = useRealtimeById<Decision>(supabase, "decisions");
@@ -362,6 +369,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     notifications.ready &&
     spaceParticipants.ready &&
     spaceOwners.ready &&
+    messageReactions.ready &&
     spaceTopics.ready &&
     taskAssignees.ready &&
     documents.ready &&
@@ -431,6 +439,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     spaces: spaces.rows,
     spaceParticipants: spaceParticipants.rows,
     spaceOwners: spaceOwners.rows,
+    messageReactions: messageReactions.rows,
     spaceTopics: spaceTopics.rows,
     decisions: decisions.rows,
     votes: votes.rows,

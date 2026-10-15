@@ -29,6 +29,7 @@ export const TABLES = [
   ["space_owners", "Room owners"],
   ["space_topics", "Topics within rooms"],
   ["messages", "Messages"],
+  ["message_reactions", "Reactions on messages"],
   ["decisions", "Motions and their outcomes"],
   ["votes", "Votes"],
   ["tasks", "Tasks"],

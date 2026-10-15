@@ -2,6 +2,7 @@
 
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppData, useSpaceMessages } from "@/lib/data-store";
 import { useToast } from "@/lib/toast";
@@ -18,6 +19,7 @@ import { AssigneePicker } from "@/components/AssigneePicker";
 import { AttachedDocuments } from "@/components/AttachedDocuments";
 import { hasFormatting, renderRichText } from "@/lib/rich-text";
 import { MessageImages } from "@/components/MessageImages";
+import { REACTIONS } from "@/lib/reactions";
 import { MAX_MESSAGE_IMAGES, MESSAGE_IMAGE_BUCKET, prepareImage } from "@/lib/images";
 import { DEFAULT_VOTE_OPTIONS } from "@/types";
 
@@ -47,6 +49,7 @@ function RoomView({ id }: { id: string }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const {
+    me,
     spaces,
     spaceTopics,
     spaceReads,
@@ -54,6 +57,7 @@ function RoomView({ id }: { id: string }) {
     groupMembers,
     spaceParticipants,
     spaceOwners,
+    messageReactions,
     profiles,
     userId,
     isGroupAdmin,
@@ -68,6 +72,13 @@ function RoomView({ id }: { id: string }) {
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const editRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Who is typing right now: member id -> when that expires (a few seconds on).
+  const [typers, setTypers] = useState<Record<string, number>>({});
+  const typingChannel = useRef<RealtimeChannel | null>(null);
+  // The message whose emoji picker is open, and whether the room's "seen by" list is expanded.
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const lastTypingSent = useRef(0);
   // Pictures chosen or pasted for the message being written (already shrunk).
   const [pending, setPending] = useState<{ id: string; blob: Blob; preview: string }[]>([]);
 
@@ -130,6 +141,78 @@ function RoomView({ id }: { id: string }) {
     topicId && spaceTopics[topicId]?.space_id === id ? topicId : null;
   const activeTopic = activeTopicId ? spaceTopics[activeTopicId] : null;
   const visibleMessages = messages.filter((m) => (m.topic_id ?? null) === activeTopicId);
+
+  // "Seen" under my latest message in a chat, from when each person last opened it.
+  const sharing = me?.share_activity !== false;
+  const lastMine = [...visibleMessages].reverse().find((m) => m.author_id === userId);
+  const otherPeople = (
+    isPrivate
+      ? roomParticipantIds(id, spaceParticipants)
+      : Object.values(groupMembers)
+          .filter((gm) => gm.group_id === space?.group_id)
+          .map((gm) => gm.member_id)
+  ).filter((pid) => pid !== userId && profiles[pid]?.active !== false);
+  const bigRoom = otherPeople.length > 4;
+  const seenBy = lastMine
+    ? otherPeople.filter((pid) => {
+        const read = spaceReads[`${id}:${pid}`];
+        return !!read && new Date(read.last_read_at).getTime() >= new Date(lastMine.created_at).getTime();
+      })
+    : [];
+  const receiptText = !lastMine
+    ? null
+    : seenBy.length === 0
+      ? "✓ Sent"
+      : otherPeople.length === 1
+        ? "✓✓ Seen"
+        : seenBy.length === otherPeople.length
+          ? "✓✓ Seen by everyone"
+          : bigRoom
+            ? `✓✓ Seen by ${seenBy.length} of ${otherPeople.length}`
+            : `✓✓ Seen by ${seenBy.map((pid) => profiles[pid]?.name.split(" ")[0] || "someone").join(", ")}`;
+  const firstName = (pid: string) => profiles[pid]?.name.split(" ")[0] || "someone";
+
+  // Reactions: who has put which one on each message.
+  const reactionsOf = (messageId: string) => {
+    const byKey: Record<string, string[]> = {};
+    for (const r of Object.values(messageReactions)) {
+      if (r.message_id === messageId) (byKey[r.reaction] ||= []).push(r.member_id);
+    }
+    return REACTIONS.filter((x) => byKey[x.key]).map((x) => ({ ...x, by: byKey[x.key] }));
+  };
+  async function toggleReaction(messageId: string, reaction: string) {
+    if (!userId) return;
+    setPickerFor(null);
+    const mine = messageReactions[`${messageId}:${userId}:${reaction}`];
+    const { error } = mine
+      ? await supabase
+          .from("message_reactions")
+          .delete()
+          .eq("message_id", messageId)
+          .eq("member_id", userId)
+          .eq("reaction", reaction)
+      : await supabase
+          .from("message_reactions")
+          .insert({ message_id: messageId, member_id: userId, reaction });
+    if (error) showToast(error.message);
+  }
+
+  // Typing: a person who has sent a message since they started typing is done.
+  const lastMessageBy: Record<string, number> = {};
+  for (const m of messages) {
+    if (m.author_id) lastMessageBy[m.author_id] = Math.max(lastMessageBy[m.author_id] ?? 0, new Date(m.created_at).getTime());
+  }
+  const typingNames = Object.entries(typers)
+    .filter(([pid, until]) => (lastMessageBy[pid] ?? 0) < until - 5000)
+    .map(([pid]) => profiles[pid]?.name.split(" ")[0] || "Someone");
+  const typingText =
+    !sharing || typingNames.length === 0
+      ? null
+      : typingNames.length === 1
+        ? `${typingNames[0]} is typing…`
+        : typingNames.length === 2
+          ? `${typingNames[0]} and ${typingNames[1]} are typing…`
+          : "Several people are typing…";
   const canManageTopic =
     !!activeTopic &&
     !!space &&
@@ -312,6 +395,41 @@ function RoomView({ id }: { id: string }) {
     if (ready) markSpaceRead(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, ready, messages.length]);
+
+  // A light-weight channel per room carries "so-and-so is typing" -- nothing is
+  // stored, and it carries no message text.
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase.channel(`typing:${id}`);
+    channel
+      .on("broadcast", { event: "typing" }, ({ payload }) => {
+        const who = payload?.userId as string | undefined;
+        if (!who || who === userId) return;
+        setTypers((prev) => ({ ...prev, [who]: new Date().getTime() + 5000 }));
+      })
+      .subscribe();
+    typingChannel.current = channel;
+    const sweep = setInterval(() => {
+      const now = new Date().getTime();
+      setTypers((prev) => {
+        const keep = Object.entries(prev).filter(([, until]) => until > now);
+        return keep.length === Object.keys(prev).length ? prev : Object.fromEntries(keep);
+      });
+    }, 1000);
+    return () => {
+      clearInterval(sweep);
+      typingChannel.current = null;
+      supabase.removeChannel(channel);
+    };
+  }, [id, userId, supabase]);
+
+  function announceTyping(value: string) {
+    if (!value.trim() || !sharing || !typingChannel.current) return;
+    const now = new Date().getTime();
+    if (now - lastTypingSent.current < 2500) return;
+    lastTypingSent.current = now;
+    void typingChannel.current.send({ type: "broadcast", event: "typing", payload: { userId } });
+  }
 
   async function removeImages(paths: string[]) {
     if (paths.length === 0) return;
@@ -848,6 +966,62 @@ function RoomView({ id }: { id: string }) {
                       )}
                     </>
                   )}
+                  <div className="reactions">
+                    {reactionsOf(m.id).map((r) => (
+                      <button
+                        type="button"
+                        key={r.key}
+                        className={`reaction${userId && r.by.includes(userId) ? " mine" : ""}`}
+                        title={`${r.label}: ${r.by.map((pid) => (pid === userId ? "you" : firstName(pid))).join(", ")}`}
+                        onClick={() => toggleReaction(m.id, r.key)}
+                      >
+                        {r.emoji} {r.by.length}
+                      </button>
+                    ))}
+                    {pickerFor === m.id ? (
+                      <span className="reaction-picker">
+                        {REACTIONS.map((r) => (
+                          <button
+                            type="button"
+                            key={r.key}
+                            title={r.label}
+                            aria-label={r.label}
+                            onClick={() => toggleReaction(m.id, r.key)}
+                          >
+                            {r.emoji}
+                          </button>
+                        ))}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="react-add"
+                        title="Add a reaction"
+                        aria-label="Add a reaction"
+                        onClick={() => setPickerFor(m.id)}
+                      >
+                        ☺ +
+                      </button>
+                    )}
+                  </div>
+                  {sharing && receiptText && m.id === lastMine?.id && (
+                    <div className="receipt">
+                      {bigRoom && seenBy.length > 0 && seenBy.length < otherPeople.length ? (
+                        <button type="button" className="receipt-btn" onClick={() => setReceiptOpen((v) => !v)}>
+                          {receiptText} {receiptOpen ? "▴" : "▾"}
+                        </button>
+                      ) : (
+                        receiptText
+                      )}
+                      {receiptOpen && bigRoom && (
+                        <div>
+                          Seen: {seenBy.map(firstName).join(", ") || "nobody yet"}
+                          <br />
+                          Not yet: {otherPeople.filter((pid) => !seenBy.includes(pid)).map(firstName).join(", ")}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))
@@ -860,6 +1034,7 @@ function RoomView({ id }: { id: string }) {
             {renderRichText(draft)}
           </div>
         )}
+        {typingText && <div className="typing-note">{typingText}</div>}
         {pending.length > 0 && (
           <div className="pending-images">
             {pending.map((p) => (
@@ -911,6 +1086,7 @@ function RoomView({ id }: { id: string }) {
             onChange={(e) => {
               setDraft(e.target.value);
               autoGrow(e.target);
+              announceTyping(e.target.value);
             }}
             onPaste={(e) => {
               // A picture on the clipboard becomes an attachment -- unless text

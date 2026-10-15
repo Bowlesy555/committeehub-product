@@ -8,6 +8,8 @@ export interface Profile {
   active: boolean;
   is_vacant: boolean;
   capacity: Capacity;
+  /** Show others when I've read their messages and when I'm typing (and see theirs). */
+  share_activity: boolean;
   created_at: string;
 }
 
@@ -81,6 +83,13 @@ export interface Space {
 export interface SpaceOwner {
   space_id: string;
   member_id: string;
+}
+
+export interface MessageReaction {
+  message_id: string;
+  member_id: string;
+  reaction: string;
+  created_at: string;
 }
 
 export interface SpaceParticipant {

@@ -182,7 +182,7 @@ function Shell({ children }: { children: React.ReactNode }) {
             >
               🔔
             </button>
-            <button className="iconbtn" title="Set PIN" onClick={() => setSettingPin(true)}>
+            <button className="iconbtn" title="PIN and privacy" onClick={() => setSettingPin(true)}>
               🔑
             </button>
             <button className="iconbtn" title="Sign out" onClick={signOut}>
@@ -227,7 +227,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 
       {settingPin && (
         <Modal
-          title="Set your PIN"
+          title="Your PIN and privacy"
           onClose={() => setSettingPin(false)}
           footer={
             <>
@@ -261,6 +261,27 @@ function Shell({ children }: { children: React.ReactNode }) {
               doesn&apos;t replace it.
             </span>
           </div>
+          <label className="row" style={{ gap: 8, marginTop: 14 }}>
+            <input
+              type="checkbox"
+              checked={me?.share_activity !== false}
+              onChange={async (e) => {
+                if (!me) return;
+                const { error } = await supabase
+                  .from("profiles")
+                  .update({ share_activity: e.target.checked })
+                  .eq("id", me.id);
+                if (error) showToast(error.message);
+              }}
+            />
+            <span>
+              Show when I&apos;ve read a message, and when I&apos;m typing
+              <span className="help" style={{ display: "block" }}>
+                Gives the &ldquo;Seen&rdquo; line in chats and the &ldquo;is typing…&rdquo; note.
+                Works both ways: if you turn it off you won&apos;t see other people&apos;s either.
+              </span>
+            </span>
+          </label>
         </Modal>
       )}
     </div>
