@@ -232,6 +232,17 @@ if (guestEmail && /^\d{6}$/.test(guestPin)) {
 const real = await run("Reading real accounts", db.from("profiles").select("id").not("email", "like", `%${DEMO_DOMAIN}`));
 const realIds = real.map((p) => p.id).filter((id) => id !== guestId);
 
+// The guest's "Things to try" card on the Hub (src/components/GuestTips.tsx).
+if (guestId && Array.isArray(scenario.guestTips)) {
+  await run(
+    "Saving the guest's things to try",
+    db.from("app_settings").upsert(
+      { key: "guest_tips", value: JSON.stringify({ email: guestEmail, tips: scenario.guestTips }) },
+      { onConflict: "key" }
+    )
+  );
+}
+
 // ---- groups ------------------------------------------------------------
 
 const groups = {};

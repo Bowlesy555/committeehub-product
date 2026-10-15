@@ -89,6 +89,14 @@ export default {
 
   privateChat: { from: "Robert", text: "Could we speak before the next meeting about the caretaker's hours? I'd rather not raise it cold in front of everyone." },
 
+  // Shown to the guest sign-in as a "Things to try" card on the Hub.
+  guestTips: [
+    { text: "Vote on \"Hire charges from January\": open the motion and choose your answer.", href: "/decisions" },
+    { text: "\"Add a raffle to the Christmas fair\" is your own motion, waiting in the Decision made folder. Choose what happens next: turn it into a task, wait to hear from the rest of the committee, or close and file it.", href: "/decisions" },
+    { text: "Open the Bookings & Hire room, react to a message with a 👍, and reply in one of its topics.", href: "/spaces" },
+    { text: "Search the Rooms tab for \"dishwasher\" to find a conversation from weeks ago.", href: "/spaces" },
+    { text: "Add it to your phone's home screen. iPhone: open it in Safari, tap Share, then \"Add to Home Screen\". Android: open it in Chrome, tap the three dots, then \"Add to Home screen\"." },
+  ],
   decisions: [
     { group: "committee", room: "bookings", topic: "charges", by: "Linda", quorum: 5, deadline: 5, created: -3,
       title: "Hire charges from January",

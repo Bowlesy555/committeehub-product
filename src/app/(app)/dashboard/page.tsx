@@ -9,6 +9,7 @@ import { roomDisplayName, roomLink } from "@/lib/rooms";
 import { assigneeIdsOf } from "@/lib/tasks";
 import { brand, PRODUCT_NAME } from "@/lib/brand";
 import { isDefaultVoteOptions, type VoteChoice } from "@/types";
+import { GuestTips } from "@/components/GuestTips";
 
 const DEADLINE_SOON_MS = 48 * 60 * 60 * 1000;
 
@@ -201,6 +202,8 @@ export default function DashboardPage() {
         {greeting()}, {firstName(me?.name)} — here&apos;s what needs your attention
       </h1>
       <p className="welcome-sub">This is your home base for {brand.appName}.</p>
+
+      <GuestTips />
 
       <div className="section-title">
         <h2>Your attention needed</h2>

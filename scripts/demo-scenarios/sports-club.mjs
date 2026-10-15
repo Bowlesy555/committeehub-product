@@ -87,6 +87,14 @@ export default {
 
   privateChat: { from: "Margaret", text: "Could we have a quick word before Thursday's meeting about the treasurer handover? Nothing urgent." },
 
+  // Shown to the guest sign-in as a "Things to try" card on the Hub.
+  guestTips: [
+    { text: "Vote on \"2027 subscription rates\": open the motion and choose your answer.", href: "/decisions" },
+    { text: "\"Fit a defibrillator outside the clubhouse\" is your own motion, waiting in the Decision made folder. Choose what happens next: turn it into a task, wait to hear from the rest of the committee, or close and file it.", href: "/decisions" },
+    { text: "Open the Membership & Fees room, react to a message with a 👍, and reply in one of its topics.", href: "/spaces" },
+    { text: "Search the Rooms tab for \"grant\" to find a conversation from weeks ago.", href: "/spaces" },
+    { text: "Add it to your phone's home screen. iPhone: open it in Safari, tap Share, then \"Add to Home Screen\". Android: open it in Chrome, tap the three dots, then \"Add to Home screen\"." },
+  ],
   decisions: [
     { group: "committee", room: "membership", topic: "fees", by: "Aisha", quorum: 6, deadline: 4, created: -2,
       title: "2027 subscription rates",
